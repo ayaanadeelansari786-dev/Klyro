@@ -1,3 +1,4 @@
+import { supabaseConfigDiagnostic } from '../supabase/config';
 import { createPublicClient } from '../supabase/public';
 
 export interface LeaderboardRow {
@@ -40,6 +41,13 @@ export interface IndustrySummaryRow {
 
 export interface RankingsPayload {
   configured: boolean;
+  /**
+   * Present only when `configured` is false. Says which variable is missing
+   * and why setting it in a dashboard may not have taken effect — an
+   * unconfigured deployment that reports nothing but `false` is
+   * indistinguishable from an empty corpus, and the two need opposite fixes.
+   */
+  reason?: string;
   industries: IndustrySummaryRow[];
   rows: LeaderboardRow[];
   totalVendors: number;
@@ -49,7 +57,14 @@ export interface RankingsPayload {
 export async function getRankings(industry?: string, region?: string): Promise<RankingsPayload> {
   const supabase = createPublicClient();
   if (!supabase) {
-    return { configured: false, industries: [], rows: [], totalVendors: 0, runs: [] };
+    return {
+      configured: false,
+      reason: supabaseConfigDiagnostic() ?? undefined,
+      industries: [],
+      rows: [],
+      totalVendors: 0,
+      runs: [],
+    };
   }
 
   let query = supabase
