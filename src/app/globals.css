@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-ground text-tx font-sans antialiased;
+    /* A ruled ledger ground, barely above the noise floor, plus one soft lift
+       from the top edge. No colour — the palette owes its hues to risk. */
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.016) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.016) 1px, transparent 1px),
+      radial-gradient(1100px 520px at 50% -260px, rgba(255, 255, 255, 0.035), transparent 70%);
+    background-size:
+      96px 96px,
+      96px 96px,
+      100% 100%;
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: rgba(236, 238, 242, 0.2);
+    color: #ffffff;
+  }
+
+  :focus-visible {
+    outline: 2px solid #eceef2;
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #272c35;
+    border-radius: 999px;
+    border: 3px solid #08090b;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3a414d;
+  }
+
+  /* Sections are linked from the sticky rail; keep headings clear of it. */
+  [id] {
+    scroll-margin-top: 116px;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-panel border border-line bg-panel shadow-panel;
+  }
+
+  /* Micro label: the system's structural voice. Mono, caps, wide, dim. */
+  .micro {
+    @apply font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-tx-3;
+  }
+
+  .num {
+    @apply font-sans tabular-nums;
+    font-stretch: 118%;
+    letter-spacing: -0.025em;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded border text-[13px] font-medium
+      transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn-primary {
+    @apply btn border-tx bg-tx px-5 py-2.5 text-ground hover:border-white hover:bg-white;
+  }
+
+  .btn-ghost {
+    @apply btn border-line bg-transparent px-4 py-2.5 text-tx-2
+      hover:border-line-strong hover:text-tx;
+  }
+
+  .field {
+    @apply w-full rounded border border-line bg-raised px-4 py-3 text-[14px] text-tx
+      outline-none transition-colors duration-150 placeholder:text-tx-3
+      focus:border-tx-2 focus:outline-none;
+  }
+
+  /* Row of a ledger table: hairline separated, hover lifts one step. */
+  .ledger-row {
+    @apply border-t border-line transition-colors duration-150;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded border border-line bg-raised px-2 py-[3px]
+      font-mono text-[10.5px] uppercase tracking-[0.1em] text-tx-2;
+  }
+
+  .rule {
+    @apply h-px w-full bg-line;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Expanded cut of the variable face, for figures that carry the page. */
+  .wide {
+    font-stretch: 125%;
+  }
+  .narrow {
+    font-stretch: 92%;
+  }
+
+  .stagger > * {
+    animation: rise 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .stagger > *:nth-child(1) { animation-delay: 0.01s; }
+  .stagger > *:nth-child(2) { animation-delay: 0.04s; }
+  .stagger > *:nth-child(3) { animation-delay: 0.07s; }
+  .stagger > *:nth-child(4) { animation-delay: 0.1s; }
+  .stagger > *:nth-child(5) { animation-delay: 0.13s; }
+  .stagger > *:nth-child(6) { animation-delay: 0.16s; }
+  .stagger > *:nth-child(7) { animation-delay: 0.19s; }
+  .stagger > *:nth-child(8) { animation-delay: 0.22s; }
+  .stagger > *:nth-child(9) { animation-delay: 0.25s; }
+  .stagger > *:nth-child(10) { animation-delay: 0.28s; }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
