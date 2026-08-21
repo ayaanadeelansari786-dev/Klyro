@@ -2,9 +2,178 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * The metric-matched fallback for the titling face.
+ *
+ * `next/font` normally emits one of these per family: a `local()` face whose
+ * metrics are stretched to match the webfont, so the pre-swap paint occupies
+ * the same space as the post-swap one and nothing reflows. It could not do so
+ * for Bodoni Moda — it looks the family up as `bodoniModa` and its bundled
+ * capsize table stores it as `bodoniModa11pt` — so it logged
+ * `Failed to find font override values` and emitted nothing.
+ *
+ * These are that table's own numbers for `bodoniModa11pt`, put through the
+ * same arithmetic Next uses (`calculateSizeAdjustValues` in
+ * `next/dist/server/font-utils`): Bodoni's average glyph width relative to
+ * Times' gives the size-adjust, and ascent and descent are divided through by
+ * it. Hand-written, but not hand-tuned — it is what Next would have produced
+ * had the key matched.
+ */
+@font-face {
+  font-family: 'Bodoni Moda Fallback';
+  src: local('Times New Roman');
+  size-adjust: 114.22%;
+  ascent-override: 98.50%;
+  descent-override: 35.02%;
+  line-gap-override: 0.00%;
+}
+
+/*
+ * Tokens.
+ *
+ * Every value is stored as space-separated RGB channels rather than a hex
+ * string, because Tailwind's opacity modifiers (`bg-risk-warn/25`,
+ * `border-line/40`) compile to `rgb(var(--token) / 0.25)` and that only works
+ * on raw channels. Switching to `var(--x)` holding `#RRGGBB` would silently
+ * break every one of those, which is the usual way a theming pass goes wrong.
+ *
+ * Dark-first. The bare `:root` carries the complete dark palette because that
+ * is what Klyro has always been and what most visitors will see; light is the
+ * override. The three states are then:
+ *
+ *   :root                                   dark — also the un-stamped default
+ *   prefers-color-scheme: light, unstamped  light, following the OS
+ *   [data-theme="light"] / ["dark"]         light or dark, following the toggle
+ *
+ * The `:not([data-theme="dark"])` guard on the media query is what lets an
+ * explicit dark choice beat a light OS. Without it the toggle only works one
+ * way, which is the classic half-finished version of this.
+ */
+
 @layer base {
   :root {
     color-scheme: dark;
+
+    --ground: 11 14 20;
+    --panel: 18 22 30;
+    --raised: 28 34 44;
+    --line: 35 42 54;
+    --line-strong: 49 58 73;
+
+    --tx: 237 239 243;
+    --tx-2: 153 161 176;
+    --tx-3: 132 139 154;
+
+    /*
+     * The seal. One accent, and the only hue in the system that is not
+     * reporting risk — see the note in tailwind.config.ts. `seal` is the
+     * graphic weight (rings, rules, the dial's index mark) and clears the 3:1
+     * floor for non-text; `seal-ink` is the same colour where it has to carry
+     * words, and clears 4.5:1. In dark they coincide; on paper they cannot.
+     */
+    --seal: 201 162 39;
+    --seal-ink: 201 162 39;
+    /*
+     * The hover state, not a dimmer seal. It moves *away* from the ground in
+     * both themes — brighter on ink, richer on paper — because a hover that
+     * darkens gold under dark ink drops the button to 3.65:1, which is what
+     * the first pass at this did.
+     */
+    --seal-dim: 216 180 74;
+    /*
+     * What is legible *on* the seal, and the one token that does not invert.
+     * The seal is a mid-tone in both themes, so dark ink clears 4.5:1 on it
+     * either way — whereas `--ground`, which this used at first, flips to near
+     * white on paper and drops the primary button to 3.14:1.
+     */
+    --on-seal: 11 14 20;
+
+    /*
+     * Risk. Solved rather than picked: each value is the least-saturated point
+     * on its hue that still clears 4.6:1 against `--raised`, the lightest
+     * surface it is ever set on. That is what lets the palette leave the neon
+     * register — #FF3D3D and #00E676 are the hacker-terminal tell — without
+     * any severity losing legibility. Every one of these is above the 4.5:1
+     * floor; the old set had `info` at 3.60.
+     */
+    --risk-bad: 217 104 91;
+    --risk-high: 205 114 54;
+    --risk-warn: 170 133 45;
+    --risk-low: 81 145 184;
+    --risk-good: 57 155 109;
+    --risk-info: 132 138 152;
+
+    /* The ruled ledger ground, and the engraved rosette behind the hero. */
+    --rule-ink: 255 255 255;
+    --rule-alpha: 0.016;
+    --lift-alpha: 0.035;
+    --guilloche-alpha: 0.5;
+  }
+
+  /* Light, when the OS asks for it and the visitor has not overridden. */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme='dark']) {
+      color-scheme: light;
+
+      --ground: 238 240 243;
+      --panel: 255 255 255;
+      --raised: 246 247 249;
+      --line: 223 227 233;
+      --line-strong: 198 204 214;
+
+      --tx: 20 23 28;
+      --tx-2: 85 93 106;
+      --tx-3: 101 109 122;
+
+      --seal: 166 130 29;
+      --seal-ink: 122 98 23;
+      --seal-dim: 194 160 68;
+      --on-seal: 20 23 28;
+
+      --risk-bad: 199 54 38;
+      --risk-high: 169 84 28;
+      --risk-warn: 139 102 14;
+      --risk-low: 45 113 156;
+      --risk-good: 29 122 79;
+      --risk-info: 100 108 125;
+
+      --rule-ink: 20 23 28;
+      --rule-alpha: 0.028;
+      --lift-alpha: 0.02;
+      --guilloche-alpha: 0.34;
+    }
+  }
+
+  /* Light, chosen explicitly. Same values; wins over a dark OS. */
+  :root[data-theme='light'] {
+    color-scheme: light;
+
+    --ground: 238 240 243;
+    --panel: 255 255 255;
+    --raised: 246 247 249;
+    --line: 223 227 233;
+    --line-strong: 198 204 214;
+
+    --tx: 20 23 28;
+    --tx-2: 85 93 106;
+    --tx-3: 101 109 122;
+
+    --seal: 166 130 29;
+    --seal-ink: 122 98 23;
+    --seal-dim: 194 160 68;
+    --on-seal: 20 23 28;
+
+    --risk-bad: 199 54 38;
+    --risk-high: 169 84 28;
+    --risk-warn: 139 102 14;
+    --risk-low: 45 113 156;
+    --risk-good: 29 122 79;
+    --risk-info: 100 108 125;
+
+    --rule-ink: 20 23 28;
+    --rule-alpha: 0.028;
+    --lift-alpha: 0.02;
+    --guilloche-alpha: 0.34;
   }
 
   html {
@@ -18,9 +187,21 @@
     /* A ruled ledger ground, barely above the noise floor, plus one soft lift
        from the top edge. No colour — the palette owes its hues to risk. */
     background-image:
-      linear-gradient(to right, rgba(255, 255, 255, 0.016) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255, 255, 255, 0.016) 1px, transparent 1px),
-      radial-gradient(1100px 520px at 50% -260px, rgba(255, 255, 255, 0.035), transparent 70%);
+      linear-gradient(
+        to right,
+        rgb(var(--rule-ink) / var(--rule-alpha)) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        rgb(var(--rule-ink) / var(--rule-alpha)) 1px,
+        transparent 1px
+      ),
+      radial-gradient(
+        1100px 520px at 50% -260px,
+        rgb(var(--rule-ink) / var(--lift-alpha)),
+        transparent 70%
+      );
     background-size:
       96px 96px,
       96px 96px,
@@ -30,12 +211,12 @@
   }
 
   ::selection {
-    background: rgba(236, 238, 242, 0.2);
-    color: #ffffff;
+    background: rgb(var(--seal) / 0.26);
+    color: rgb(var(--tx));
   }
 
   :focus-visible {
-    outline: 2px solid #eceef2;
+    outline: 2px solid rgb(var(--seal-ink));
     outline-offset: 2px;
     border-radius: 2px;
   }
@@ -48,12 +229,12 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #272c35;
+    background: rgb(var(--line-strong));
     border-radius: 999px;
-    border: 3px solid #08090b;
+    border: 3px solid rgb(var(--ground));
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #3a414d;
+    background: rgb(var(--tx-3));
   }
 
   /* Sections are linked from the sticky rail; keep headings clear of it. */
@@ -78,13 +259,29 @@
     letter-spacing: -0.025em;
   }
 
+  /*
+   * Titling. Bodoni's thin strokes need size to survive, so this is only ever
+   * used above ~24px; below that the grotesque does the work.
+   */
+  .titling {
+    @apply font-display font-semibold;
+    letter-spacing: -0.02em;
+  }
+
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded border text-[13px] font-medium
-      transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40;
+      transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40
+      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seal-ink;
   }
 
   .btn-primary {
     @apply btn border-tx bg-tx px-5 py-2.5 text-ground hover:border-white hover:bg-white;
+  }
+
+  /* The one action the page exists for, in the one accent the page has. */
+  .btn-seal {
+    @apply btn border-seal bg-seal px-5 py-2.5 font-semibold text-seal-on
+      hover:border-seal-dim hover:bg-seal-dim;
   }
 
   .btn-ghost {
@@ -95,7 +292,8 @@
   .field {
     @apply w-full rounded border border-line bg-raised px-4 py-3 text-[14px] text-tx
       outline-none transition-colors duration-150 placeholder:text-tx-3
-      focus:border-tx-2 focus:outline-none;
+      focus:border-seal
+      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seal-ink;
   }
 
   /* Row of a ledger table: hairline separated, hover lifts one step. */
@@ -149,6 +347,54 @@
   }
 }
 
+/*
+ * The dial.
+ *
+ * A drum of faces standing on a virtual cylinder: each is rotated about the X
+ * axis by its share of 360° and pushed out along Z by the radius, so the one
+ * at 0° faces the reader square-on and the rest fall away above and below.
+ * Rotating the parent by the negative of any face's angle brings that face to
+ * the front — which is the whole mechanism, and the reason this needs no
+ * library and no geometry beyond one multiplication.
+ *
+ * `--dial-turn` is written by the scroll handler. Everything else is static.
+ */
+.dial {
+  perspective: 1400px;
+  perspective-origin: 50% 50%;
+}
+
+.dial-drum {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--dial-turn, 0deg));
+  transition: transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dial-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  backface-visibility: hidden;
+  transform: rotateX(var(--face-angle)) translateZ(var(--dial-radius));
+  /* Faces turned away from the reader are dimmed by the handler, not hidden —
+     a drum you can see the shoulders of reads as a solid object. */
+  opacity: var(--face-opacity, 0.16);
+  transition:
+    opacity 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/*
+ * Reduced motion, and the narrow viewport, both fall back to the same static
+ * list. The drum is the illusion; the eleven names are the content, and they
+ * are present either way.
+ */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -160,4 +406,357 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+  .dial-drum {
+    transform: none;
+  }
+}
+
+/* ==================================================================
+ * Depth — glazed surfaces
+ *
+ * The brief asked for glassmorphism, and the honest version of that for this
+ * product is not the frosted-lilac card every SaaS page ships. It is glazing:
+ * a pane laid over an engraved plate, the way a certificate sits under glass
+ * in a frame. So the blur has something specific to blur — the ruled ledger
+ * ground and the guilloché rosette pass underneath every glazed panel and
+ * come through as a wash, which is the entire reason the effect is worth
+ * having here. On an opaque panel it would only be an expensive way to draw a
+ * rectangle.
+ *
+ * The fill stays high (0.66 / 0.74). Apple's own materials are far more
+ * opaque than the imitations of them, and this page carries findings — the
+ * text has to win against whatever passes behind it.
+ * ================================================================== */
+
+@layer base {
+  :root {
+    --glass: 18 22 30;
+    --glass-alpha: 0.66;
+    --glass-blur: 20px;
+
+    /* The lit edge. Glass catches light along its top-left arris; this is
+       that highlight, drawn inside the border rather than replacing it. */
+    --glass-edge: 255 255 255;
+    --glass-edge-alpha: 0.1;
+
+    /* The specular bloom that follows the pointer. White on ink. */
+    --sheen: 255 255 255;
+    --sheen-alpha: 0.07;
+
+    /* Cast shadow. Dark themes get depth from a near-black; paper gets it
+       from a cool grey, because pure black under a white card reads as dirt. */
+    --shade: 0 0 0;
+    --shade-alpha: 0.55;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme='dark']) {
+      --glass: 255 255 255;
+      --glass-alpha: 0.74;
+      --glass-edge: 255 255 255;
+      --glass-edge-alpha: 0.95;
+
+      /* Gold, not white: a white bloom on a white pane is invisible, and the
+         seal is the one warm value the system already owns. */
+      --sheen: 201 162 39;
+      --sheen-alpha: 0.13;
+
+      --shade: 78 88 108;
+      --shade-alpha: 0.22;
+    }
+  }
+
+  :root[data-theme='light'] {
+    --glass: 255 255 255;
+    --glass-alpha: 0.74;
+    --glass-edge: 255 255 255;
+    --glass-edge-alpha: 0.95;
+    --sheen: 201 162 39;
+    --sheen-alpha: 0.13;
+    --shade: 78 88 108;
+    --shade-alpha: 0.22;
+  }
+}
+
+@layer components {
+  .glass {
+    position: relative;
+    isolation: isolate;
+    border: 1px solid rgb(var(--line));
+    border-radius: 10px;
+    background: rgb(var(--glass) / var(--glass-alpha));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+    box-shadow: 0 34px 80px -46px rgb(var(--shade) / var(--shade-alpha));
+  }
+
+  /*
+   * The arris. A 1px gradient ring, produced by masking a padded box against
+   * its own content box — which is how you get a *partial* border (bright at
+   * the top-left, gone by 45%) without four separate elements.
+   */
+  .glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(
+      152deg,
+      rgb(var(--glass-edge) / var(--glass-edge-alpha)),
+      rgb(var(--glass-edge) / 0) 46%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /*
+   * Specular highlight tracking the pointer. `--mx`/`--my` are written by
+   * `useSheen`; with no pointer they are unset and the gradient sits at the
+   * top centre, which is where a fixed light source would put it anyway — so
+   * a touch device and a keyboard user get a lit panel rather than a flat one.
+   *
+   * It paints *over* the content on purpose. Light falls on the front face of
+   * the glass, not behind the words underneath it.
+   */
+  .sheen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+      380px circle at var(--mx, 50%) var(--my, 0%),
+      rgb(var(--sheen) / var(--sheen-alpha)),
+      rgb(var(--sheen) / 0) 68%
+    );
+    opacity: 0;
+    transition: opacity 420ms ease;
+    pointer-events: none;
+  }
+
+  .sheen:hover::after,
+  .sheen:focus-within::after {
+    opacity: 1;
+  }
+
+  /* A card that acknowledges the cursor. One step, not a bounce. */
+  .lift {
+    transition:
+      transform 460ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 260ms ease,
+      box-shadow 460ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .lift:hover {
+    transform: translateY(-3px);
+    border-color: rgb(var(--line-strong));
+  }
+}
+
+@layer utilities {
+  /*
+   * Scroll reveal.
+   *
+   * Gated behind `.js` — which the pre-paint boot script sets — so that with
+   * scripting off the page is simply a page, rather than a column of
+   * permanently invisible sections. That gate is the whole reason this is a
+   * class and not a bare attribute selector.
+   */
+  .js [data-reveal] {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+    transition:
+      opacity 720ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 720ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+  .js [data-reveal='in'] {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* The same, for a word in a headline: it comes up from behind its own line. */
+  .js [data-reveal-word] {
+    display: inline-block;
+    opacity: 0;
+    transform: translate3d(0, 0.42em, 0);
+    transition:
+      opacity 760ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 760ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+  .js [data-reveal-word='in'] {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Marquee: the track holds two identical runs, so -50% is a seamless loop. */
+  .marquee-track {
+    animation: marquee-scroll var(--marquee-duration, 46s) linear infinite;
+  }
+  .marquee:hover .marquee-track,
+  .marquee:focus-within .marquee-track {
+    animation-play-state: paused;
+  }
+
+  /* Edges of a full-bleed band, faded into the ground rather than cut. */
+  .band-fade {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 9%,
+      #000 91%,
+      transparent
+    );
+    mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
+  }
+}
+
+@keyframes marquee-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/*
+ * Reduced motion, again.
+ *
+ * The global block above already flattens durations, but a reveal that starts
+ * at `opacity: 0` and is flattened to a 0.01ms transition still depends on the
+ * observer firing to become visible. Here the hidden state is removed
+ * outright, so the content is present from first paint regardless.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .js [data-reveal],
+  .js [data-reveal-word] {
+    opacity: 1;
+    transform: none;
+  }
+  .marquee-track {
+    animation: none;
+  }
+  .lift:hover {
+    transform: none;
+  }
+}
+
+/* ==================================================================
+ * Two controls that native styling cannot reach
+ * ================================================================== */
+
+/*
+ * The score slider.
+ *
+ * A real `input[type=range]`, styled, rather than a div with a drag handler —
+ * which buys arrow keys, Home/End, Page Up/Down, the correct role and value
+ * announcements, and touch behaviour, none of which a reimplementation gets
+ * for free and all of which it usually gets wrong.
+ */
+.score-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 22px;
+  background: transparent;
+  cursor: grab;
+}
+.score-range:active {
+  cursor: grabbing;
+}
+
+.score-range::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 999px;
+  background: rgb(var(--line-strong));
+}
+.score-range::-moz-range-track {
+  height: 2px;
+  border-radius: 999px;
+  background: rgb(var(--line-strong));
+}
+
+.score-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -8px;
+  border-radius: 999px;
+  border: 2px solid rgb(var(--panel));
+  /* Follows the band the score is currently in, so the control is the same
+     colour as the reading it produces. */
+  background: var(--range-hue, rgb(var(--seal)));
+  box-shadow: 0 2px 10px -2px rgb(var(--shade) / 0.6);
+  transition: transform 160ms ease;
+}
+.score-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgb(var(--panel));
+  background: var(--range-hue, rgb(var(--seal)));
+  box-shadow: 0 2px 10px -2px rgb(var(--shade) / 0.6);
+  transition: transform 160ms ease;
+}
+.score-range:hover::-webkit-slider-thumb,
+.score-range:active::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+.score-range:hover::-moz-range-thumb,
+.score-range:active::-moz-range-thumb {
+  transform: scale(1.12);
+}
+/*
+ * Focus keeps the system's own ring rather than a bespoke one.
+ *
+ * The first version suppressed the outline and drew a translucent halo on the
+ * thumb instead. It looked tidier and was worse: a 0.55-alpha ring around an
+ * already-coloured thumb is a weaker indicator than the 2px seal outline every
+ * other control on the site uses, and it made this the one control that
+ * announces focus differently. The thumb still grows, as an extra signal.
+ */
+.score-range:focus-visible::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+.score-range:focus-visible::-moz-range-thumb {
+  transform: scale(1.12);
+}
+
+/*
+ * The floating header.
+ *
+ * Transparent while the page is at rest, so the hero is not clipped by a bar
+ * the reader has not asked for; glazed once anything has scrolled under it,
+ * because that is the moment it starts overlapping content and needs to
+ * separate itself from it. The border is present-but-transparent at rest so
+ * the transition is a fade rather than a 1px reflow of everything below.
+ */
+.topbar {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: rgb(var(--glass) / 0);
+  box-shadow: 0 0 0 0 transparent;
+  transition:
+    background 340ms ease,
+    border-color 340ms ease,
+    box-shadow 340ms ease,
+    -webkit-backdrop-filter 340ms ease,
+    backdrop-filter 340ms ease;
+}
+
+.topbar[data-lifted='true'] {
+  border-color: rgb(var(--line));
+  background: rgb(var(--glass) / var(--glass-alpha));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  box-shadow: 0 20px 46px -34px rgb(var(--shade) / var(--shade-alpha));
 }

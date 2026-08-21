@@ -36,8 +36,8 @@ export default function BenchmarkChart({ score, benchmark, domain }: BenchmarkCh
 
   const bars = [
     { name: 'This domain', value: score, fill: TONE_COLORS[riskColorFor(score)], strong: true },
-    { name: 'Pool average', value: benchmark?.industryAverage ?? 0, fill: '#9AA1AD', strong: false },
-    { name: 'Pool best', value: benchmark?.industryBest ?? 0, fill: '#3A414D', strong: false },
+    { name: 'Pool average', value: benchmark?.industryAverage ?? 0, fill: 'rgb(var(--tx-2))', strong: false },
+    { name: 'Pool best', value: benchmark?.industryBest ?? 0, fill: 'rgb(var(--line-strong))', strong: false },
   ];
 
   return (

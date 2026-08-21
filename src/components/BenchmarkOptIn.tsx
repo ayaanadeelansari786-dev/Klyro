@@ -92,7 +92,7 @@ export default function BenchmarkOptIn({ orgId, optedIn, canManage }: Props) {
           aria-label="Contribute to industry benchmarks"
           disabled={!canManage || busy}
           onClick={() => void toggle(!enabled)}
-          className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full border transition-colors focus:outline-none focus-visible:border-tx-2 disabled:opacity-40 ${
+          className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seal-ink focus:outline-none focus-visible:border-tx-2 disabled:opacity-40 ${
             enabled ? 'border-tx-2 bg-raised' : 'border-line-strong bg-raised'
           }`}
         >

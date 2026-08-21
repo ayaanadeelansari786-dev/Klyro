@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { PageFooter, Wordmark } from '@/components/Chrome';
+import { PageFooter, SiteHeader } from '@/components/Chrome';
 import OrgManager from '@/components/OrgManager';
 import { createClientForRequest, getCurrentUser } from '@/lib/supabase/server';
 
@@ -24,8 +24,7 @@ export default async function OrgIndexPage() {
 
   return (
     <main className="mx-auto w-full max-w-[1180px] px-5 py-6 sm:px-8 sm:py-8">
-      <header className="flex items-center justify-between">
-        <Wordmark />
+      <SiteHeader>
         <nav className="flex items-center gap-6">
           <Link href="/app" className="text-[12.5px] text-tx-2 transition-colors hover:text-tx">
             Your assessments
@@ -34,7 +33,7 @@ export default async function OrgIndexPage() {
             New assessment
           </Link>
         </nav>
-      </header>
+      </SiteHeader>
 
       <div className="py-12 lg:py-16">
         <p className="micro">Organisations</p>

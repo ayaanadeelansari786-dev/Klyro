@@ -21,7 +21,15 @@ import {
   TOOL_VERSION,
 } from '@/lib/constants';
 import { benchmarkSentence, ordinal } from '@/lib/benchmark';
-import { executiveHighlights, prioritise, ratingFor, weightPercent } from '@/lib/scoring';
+import {
+  coverageCounts,
+  executiveHighlights,
+  explainLowCoverage,
+  LOW_COVERAGE_THRESHOLD,
+  prioritise,
+  ratingFor,
+  weightPercent,
+} from '@/lib/scoring';
 import type {
   BenchmarkResult,
   CategoryResult,
@@ -62,7 +70,15 @@ Font.registerHyphenationCallback((word) => {
  * Palette — print-oriented: white paper, navy structure, cyan accents.
  * ------------------------------------------------------------------ */
 
-const C = {
+/**
+ * Exported so `SummaryReportTemplate` renders in the same ink.
+ *
+ * The summary is a companion document, not a second product, and two PDFs
+ * arriving in the same email with different navies is the fastest way to make
+ * both look unofficial. Print-fixed on purpose: this palette does not follow
+ * the site's light/dark tokens, because a sheet of paper has no mode.
+ */
+export const C = {
   navy: '#0A0E1A',
   slate: '#3B455C',
   muted: '#6B7590',
@@ -79,7 +95,7 @@ const C = {
   panel: '#F7F9FC',
 } as const;
 
-function toneFor(score: number): { fg: string; bg: string } {
+export function toneFor(score: number): { fg: string; bg: string } {
   if (score >= 80) return { fg: C.good, bg: C.goodBg };
   if (score >= 60) return { fg: C.warn, bg: C.warnBg };
   return { fg: C.bad, bg: C.badBg };
@@ -166,6 +182,27 @@ const s = StyleSheet.create({
   },
   body: { fontSize: 9.5, lineHeight: 1.55, color: C.slate, marginBottom: 8 },
   mono: { fontFamily: 'Courier', fontSize: 8.5, color: C.navy },
+
+  /* Generated context. Tinted, inset and ruled, so it never reads as report
+     text — see `AiContextBox`. */
+  aiBox: {
+    backgroundColor: C.panel,
+    borderLeftWidth: 2,
+    borderLeftColor: C.muted,
+    paddingVertical: 7,
+    paddingHorizontal: 9,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  aiLabel: {
+    fontSize: 6.5,
+    fontFamily: 'Helvetica-Bold',
+    color: C.muted,
+    letterSpacing: 0.9,
+    marginBottom: 4,
+  },
+  aiBody: { fontSize: 9, lineHeight: 1.5, color: C.slate },
+  aiFoot: { fontSize: 6.5, lineHeight: 1.4, color: C.muted, marginTop: 5 },
 
   /* panels */
   panel: {
@@ -326,7 +363,7 @@ const s = StyleSheet.create({
  * ------------------------------------------------------------------ */
 
 /** Arc path for the donut gauge, drawn clockwise from 12 o'clock. */
-function arcPath(cx: number, cy: number, r: number, fraction: number): string {
+export function arcPath(cx: number, cy: number, r: number, fraction: number): string {
   const clamped = Math.max(0.0001, Math.min(0.9999, fraction));
   const angle = clamped * Math.PI * 2;
   const endX = cx + r * Math.sin(angle);
@@ -335,7 +372,7 @@ function arcPath(cx: number, cy: number, r: number, fraction: number): string {
   return `M ${cx} ${cy - r} A ${r} ${r} 0 ${largeArc} 1 ${endX} ${endY}`;
 }
 
-function ScoreDonut({ score, size = 132 }: { score: number; size?: number }) {
+export function ScoreDonut({ score, size = 132 }: { score: number; size?: number }) {
   const tone = toneFor(score);
   const r = size / 2 - 11;
   const cx = size / 2;
@@ -427,7 +464,29 @@ function FindingField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Header({ domain, title }: { domain: string; title: string }) {
+/**
+ * Generated context, in a box that cannot be mistaken for a measurement.
+ *
+ * Every other field in a finding is set flush on the page in the report's own
+ * voice. This one is inset, tinted, ruled down its leading edge and labelled
+ * — four separate signals, because a printed page has no hover, no disclosure
+ * arrow and no way for a reader to interrogate where a sentence came from. It
+ * has to be legible as generated from across a desk.
+ */
+function AiContextBox({ narrative }: { narrative: string }) {
+  return (
+    <View style={s.aiBox} wrap={false}>
+      <Text style={s.aiLabel}>AI CONTEXT — GENERATED, NOT MEASURED</Text>
+      <Text style={s.aiBody}>{narrative}</Text>
+      <Text style={s.aiFoot}>
+        Written by a language model from this assessment&apos;s own findings and measurements. It
+        adds no observation and does not affect the severity or the score above.
+      </Text>
+    </View>
+  );
+}
+
+export function Header({ domain, title }: { domain: string; title: string }) {
   return (
     <View style={s.headerRow} fixed>
       <View>
@@ -652,6 +711,7 @@ export function ReportTemplate({
   const technologyProfile =
     result.categories.find((c) => c.key === 'technologies')?.payload?.technologyProfile ?? null;
 
+
   // Only the top two tiers reach the PDF. The dashboard carries every host;
   // a printed report listing eighty is a directory, not an assessment.
   const upperTierHosts = subdomains
@@ -742,12 +802,48 @@ export function ReportTemplate({
           </View>
         </View>
 
+        {/* Above the donut, matching the dashboard. A reader who takes in the
+            score before the caveat has already formed the wrong impression. */}
+        {result.coverage < LOW_COVERAGE_THRESHOLD && (
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: C.warn,
+              backgroundColor: C.warnBg,
+              borderRadius: 3,
+              padding: 10,
+              marginBottom: 14,
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: 'Helvetica-Bold',
+                fontSize: 9.5,
+                color: C.warn,
+                marginBottom: 3,
+              }}
+            >
+              Only {Math.round(result.coverage * 100)}% of the assessment could be completed for this
+              domain.
+            </Text>
+            <Text style={{ fontSize: 8.5, lineHeight: 1.5, color: C.slate }}>
+              {explainLowCoverage(result)}
+            </Text>
+          </View>
+        )}
+
         <View style={s.hero}>
           <ScoreDonut score={result.compositeScore} />
           <View style={s.heroRight}>
             <View style={{ ...s.riskPill, backgroundColor: tone.bg }}>
               <Text style={{ ...s.riskPillText, color: tone.fg }}>{result.riskLevel.toUpperCase()}</Text>
             </View>
+            <Text style={{ fontSize: 8.5, color: C.muted, marginBottom: 5 }}>
+              {coverageCounts(result).assessed} of {coverageCounts(result).total} checks completed
+              {result.coverage < 0.999
+                ? ` · ${Math.round(result.coverage * 100)}% of scoring weight`
+                : ''}
+            </Text>
             <Text style={{ fontSize: 10, color: C.slate, lineHeight: 1.6 }}>
               Klyro assessed {ordered.filter((c) => c.status === 'assessed').length} categories of
               public exposure across DNS, certificates, email authentication, web configuration and
@@ -1613,6 +1709,9 @@ export function ReportTemplate({
               />
               {finding.evidence.limitation && (
                 <FindingField label="CANNOT ESTABLISH" value={finding.evidence.limitation} />
+              )}
+              {finding.aiContext?.generated && finding.aiContext.narrative && (
+                <AiContextBox narrative={finding.aiContext.narrative} />
               )}
             </View>
           );

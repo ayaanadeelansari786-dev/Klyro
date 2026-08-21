@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { CHECKS, CHECK_ORDER, MODULE_MANIFEST, timeoutFor } from '@/lib/checks';
 import { dnsQuery, runModule } from '@/lib/checks/util';
+import { narrateFindings } from '@/lib/ai/narrate';
 import { getBenchmark } from '@/lib/benchmark';
 import { INDUSTRIES, MIN_CONTEXT_COVERAGE, RATE_LIMIT_MAX, REGIONS } from '@/lib/constants';
 import { parseDomain } from '@/lib/domain';
@@ -9,7 +10,7 @@ import { buildInventory } from '@/lib/intel/inventory';
 import { assessRelationship, type PostureSnapshot } from '@/lib/intel/relationship';
 import { acquireScanSlot, clientKey, consumeRateLimit } from '@/lib/rateLimit';
 import { buildScanResult, computeComposite } from '@/lib/scoring';
-import { screenName, screenTarget } from '@/lib/target';
+import { preflightDomainCheck, screenName, screenTarget } from '@/lib/target';
 import { resolveOwner, type OwnerContext } from '@/lib/auth/context';
 import {
   contributeToBenchmark,
@@ -231,6 +232,60 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: screening.error }, { status: 400 });
   }
 
+  /*
+   * Does the domain exist at all?
+   *
+   * A name with no address is a typo, not a posture. Left to run, it produces
+   * eleven modules that each fail to reach anything and a report that says
+   * almost nothing — twenty seconds spent to communicate "you mistyped it",
+   * badly. This answers the same question in about two.
+   *
+   * `screening.addresses` is handed through rather than re-resolved: the call
+   * above already asked for exactly the A and AAAA records this needs, so a
+   * domain that does exist adds no DNS work and no latency here. Only a name
+   * that resolves to nothing pays for the variant probes, which is the right
+   * place for that cost to land.
+   */
+  const preflight = await preflightDomainCheck(
+    domain,
+    (name, type) => dnsQuery(name, type, { confirmAbsence: false }),
+    screening.addresses,
+  );
+
+  if (!preflight.exists) {
+    /*
+     * Give the token back.
+     *
+     * This is the one rejection in the handler that costs a token without a
+     * scan having been attempted, and it is also the one a person hits by
+     * mistake rather than by intent. Ten tokens an hour is generous for
+     * assessments and thin for typing: a handful of fumbled names would
+     * otherwise lock someone out before they had run a single scan.
+     *
+     * Deliberately not extended to the rejections around it. `screenTarget`
+     * above refuses a domain that resolves inward, which is a request that was
+     * correctly stopped and is not free to repeat — a refundable refusal is a
+     * refusal an attacker can issue indefinitely. The token spent there is the
+     * cost of having asked.
+     *
+     * Non-fatal: `refund` swallows its own failures, so a limiter that is
+     * unreachable at this moment costs the caller one token and changes
+     * nothing about the answer below.
+     */
+    await limit.refund();
+
+    return NextResponse.json(
+      {
+        code: 'DOMAIN_NOT_FOUND',
+        error: preflight.suggestion
+          ? `${domain} does not resolve in DNS. Did you mean ${preflight.suggestion}?`
+          : `${domain} does not resolve in DNS. Check the spelling, or confirm the domain is registered and active.`,
+        suggestion: preflight.suggestion ?? null,
+      },
+      { status: 422 },
+    );
+  }
+
   /* ---------------- Optional buyer context ---------------- */
 
   const contextRaw = (body.contextDomain ?? '').trim();
@@ -321,6 +376,24 @@ export async function POST(request: Request) {
         send({ type: 'inventory:done', inventory });
 
         let result = buildScanResult({ domain, industry, region }, categories, inventory);
+
+        /*
+         * Generated context, before the assessment is stored rather than
+         * after.
+         *
+         * Not a preference — `assessments` carries an append-only trigger that
+         * refuses any update altering `findings`, so a note written after the
+         * insert could never be saved. Writing it here means it is part of the
+         * row from the moment the row exists, which is also what makes it
+         * survive to a report printed months later.
+         *
+         * Bounded and non-fatal: see `narrateFindings`. A scan that reaches
+         * this line has already done all its real work, and losing the notes
+         * must cost the reader some commentary rather than the assessment.
+         */
+        send({ type: 'ai:running' });
+        result = await narrateFindings(result).catch(() => result);
+        send({ type: 'ai:done' });
 
         // The benchmark is computed before the assessment is stored, not
         // after: it is part of what gets stored. A report reprinted next year

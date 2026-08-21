@@ -86,6 +86,24 @@ export interface Finding {
   evidence: FindingEvidence;
   /** Points this finding cost inside its own module, when it cost any. */
   scoreImpact?: number;
+  /**
+   * A short note written by a language model, grounded in facts this same
+   * scan produced. Optional, and deliberately kept apart from the fields
+   * above: everything else on this interface is measured, this one is
+   * generated, and the interface is where that distinction starts. Absent
+   * when the finding was not eligible, when Groq is not configured, and when
+   * generation failed — see `src/lib/ai/narrate.ts`.
+   */
+  aiContext?: FindingAiContext;
+}
+
+/** Generated context attached to a finding. Never a source of score. */
+export interface FindingAiContext {
+  narrative: string | null;
+  generated: boolean;
+  /** Diagnostic only. Never rendered to a reader. */
+  reason?: string;
+  generatedAt?: string;
 }
 
 /** One line of a category's score, so the number can be taken apart. */
@@ -541,6 +559,12 @@ export type ScanEvent =
   // independently of the ten module events above.
   | { type: 'context:running'; domain: string }
   | { type: 'context:done'; assessment: RelationshipAssessment | null; error?: string }
+  // Generated context for the top findings. It runs after scoring and before
+  // the result is stored, and it is bounded — see `src/lib/ai/narrate.ts`.
+  // Reported so the progress screen can say what it is waiting on rather than
+  // appearing to stall between the last module and the result.
+  | { type: 'ai:running' }
+  | { type: 'ai:done' }
   // The inventory is built from what the check modules already resolved, so it
   // lands after them rather than alongside.
   | { type: 'inventory:running' }

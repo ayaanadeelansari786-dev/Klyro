@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 
 import { PageFooter, Wordmark } from '@/components/Chrome';
+import ThemeToggle from '@/components/ThemeToggle';
 import { COLORS, INDUSTRIES } from '@/lib/constants';
 import { riskColorFor } from '@/lib/scoring';
 import type { IndustrySummaryRow, LeaderboardRow, RankingsPayload } from '@/lib/dataset/rankings';
@@ -187,9 +188,12 @@ export default function RankingsView() {
             <span className="hidden h-3 w-px bg-line-strong sm:block" aria-hidden="true" />
             <span className="micro hidden sm:block">Benchmark dataset</span>
           </div>
-          <Link href="/" className="btn-ghost px-3 py-2 text-[12.5px]">
-            New assessment
-          </Link>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <Link href="/" className="btn-ghost px-3 py-2 text-[12.5px]">
+              New assessment
+            </Link>
+          </div>
         </div>
       </header>
 

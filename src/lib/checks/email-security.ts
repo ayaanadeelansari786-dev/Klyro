@@ -762,8 +762,6 @@ export async function checkEmailSecurity(domain: string): Promise<ModuleOutput> 
    */
   const enforcing = dmarc.policy === 'reject';
   const filtering = dmarc.policy === 'quarantine';
-  const spfAsserts = spf.qualifier === '-all' || spf.qualifier === '~all';
-
   const verdict = enforcing
     ? `Published policy asks receiving servers to reject mail that fails authentication (SPF ${spf.qualifier}, DMARC p=reject).`
     : filtering
@@ -773,19 +771,55 @@ export async function checkEmailSecurity(domain: string): Promise<ModuleOutput> 
         : `No DMARC policy is published, so nothing instructs receiving servers to act on failed authentication (SPF ${spf.qualifier}).`;
 
   if (!enforcing && !filtering) {
+    /*
+     * Precision about what SPF does and does not cover.
+     *
+     * Two independent reviewers flagged the same overstatement here: a domain
+     * publishing `-all` *has* published a rejection instruction, and telling
+     * its owner that "nothing" instructs receivers to reject forged mail is
+     * simply wrong. It is also the kind of wrong that costs trust, because the
+     * person reading it knows they configured SPF.
+     *
+     * The real gap is narrower and worth stating exactly. SPF authenticates
+     * the envelope sender — the `MAIL FROM` used during delivery, which a
+     * recipient never sees. The `From:` header they do see is unconstrained by
+     * SPF, and DMARC is the only one of the three that ties the two together.
+     * So with `-all` and no DMARC, one half is closed and the visible half is
+     * open.
+     *
+     * Only the wording changes. The severity, the confidence and the score are
+     * untouched: the From-header gap is real either way, and this finding is
+     * about naming it accurately rather than about softening it.
+     */
+    const spfRejects = spf.record !== null && spf.qualifier === '-all';
+    const spfMarks = spf.record !== null && spf.qualifier === '~all';
+
+    const interpretation = spfRejects
+      ? 'SPF is published with a hard-fail rule (-all), which does instruct receiving servers to reject mail that fails its check. That check covers the envelope sender used during delivery, which a recipient never sees. It does not cover the From address shown in the mail client, and DMARC — the only mechanism that ties the two together and publishes an instruction for the visible address — is absent here. One half of the problem is addressed; the half a reader of the message actually sees is not.'
+      : spfMarks
+        ? 'SPF is published but ends in ~all, which asks receivers to accept failing mail and mark it rather than refuse it. That is a hint, not an instruction, and it applies to the envelope sender rather than the From address a recipient sees. With no DMARC policy, nothing published covers the visible From address at all.'
+        : spf.record
+          ? 'SPF is published but its default rule asserts nothing about mail that fails the check, and no DMARC policy is published. Neither the envelope sender nor the From address a recipient sees is covered by a published instruction.'
+          : 'Neither SPF nor DMARC is published. Nothing instructs receiving servers to question or reject mail claiming to come from this domain, at either the envelope or the visible From address.';
+
+    const risk = spfRejects
+      ? 'Impersonation in the visible From header — the version a recipient reads — is not addressed by SPF alone, and that is the specific gap DMARC closes. An attacker can send mail showing this domain in the From address from infrastructure that fails SPF, and without a DMARC policy many receiving servers have no published instruction telling them to act on that failure. Whether any given message is delivered depends on the receiving provider, which Klyro cannot observe and does not claim to predict.'
+      : 'A message with this domain in the From header, sent from a server the domain does not control, has no published policy working against it. Whether such a message reaches an inbox depends entirely on the receiving provider, which Klyro cannot observe and does not claim to predict — large providers apply their own filtering that catches some of it. Domain impersonation in the From header is the common opening move in invoice fraud and executive impersonation, which is why the absence of a policy is treated as material rather than theoretical.';
+
     findings.push(
       makeFinding(KEY, {
-        title: 'Nothing published instructs receivers to reject forged mail',
+        title: spfRejects
+          ? 'SPF rejects forged senders, but nothing covers the visible From address'
+          : 'Nothing published instructs receivers to reject forged mail',
         severity: 'high',
         confidence: dmarc.record || spf.record ? 'medium' : 'high',
         asset: domain,
         observed: `SPF default rule: ${spf.qualifier}. DMARC policy: ${dmarc.policy ?? 'not published'}. DKIM: ${dkimConfirmed ? `key found at ${dkimSelectors.join(', ')}` : 'could not be determined'}.`,
-        interpretation:
-          'DMARC is the only one of the three mechanisms that checks the From address a recipient actually sees, and the only one that publishes an instruction about what to do on failure. With DMARC at none or absent, this domain publishes no such instruction. Each receiving server falls back to its own reputation and heuristic filtering.',
-        risk:
-          'A message with this domain in the From header, sent from a server the domain does not control, has no published policy working against it. Whether such a message reaches an inbox depends entirely on the receiving provider, which Klyro cannot observe and does not claim to predict — large providers apply their own filtering that catches some of it. Domain impersonation in the From header is the common opening move in invoice fraud and executive impersonation, which is why the absence of a policy is treated as material rather than theoretical.',
-        recommendation:
-          'Treat SPF `-all`, DKIM signing and DMARC `p=reject` as one project rather than three. Start at `p=none` with a reporting address, use the reports to confirm every legitimate sender aligns, then progress the policy. Six to twelve weeks is typical.',
+        interpretation,
+        risk,
+        recommendation: spfRejects
+          ? 'The SPF half is already done. Publish a DMARC record at `p=none` with a reporting address, use the aggregate reports to confirm every legitimate sender aligns with the From domain, then move the policy to `quarantine` and on to `reject`. Because `-all` is already in place, this is a shorter path than starting from nothing — typically four to eight weeks, most of it spent reading reports rather than changing records.'
+          : 'Treat SPF `-all`, DKIM signing and DMARC `p=reject` as one project rather than three. Start at `p=none` with a reporting address, use the reports to confirm every legitimate sender aligns, then progress the policy. Six to twelve weeks is typical.',
         evidence: {
           test: 'SPF, DMARC and DKIM records retrieved and evaluated together',
           observed: `SPF ${spf.qualifier}${spf.redirectedTo ? ` (via ${spf.redirectedTo})` : ''}; DMARC ${dmarc.policy ?? 'absent'}; DKIM ${dkimConfirmed ? 'present' : 'undetermined'}`,

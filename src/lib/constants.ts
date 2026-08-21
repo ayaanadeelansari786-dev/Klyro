@@ -1,6 +1,6 @@
 import type { CategoryKey } from './types';
 
-export const TOOL_VERSION = '1.1.0';
+export const TOOL_VERSION = '1.6.0';
 
 export const INDUSTRIES = [
   'Banking & Finance',
@@ -122,16 +122,31 @@ export const CATEGORY_SHORT_LABELS: Record<CategoryKey, string> = {
   technologies: 'Technology',
 };
 
+/**
+ * Screen colours, as references rather than values.
+ *
+ * These are set on inline styles and on SVG presentation attributes, both of
+ * which resolve `var()` — so a component that writes `fill={COLORS.good}` now
+ * follows the theme without any of them having to know a theme exists. That is
+ * the whole trick behind the light mode: the ~40 inline colour assignments
+ * scattered through the dashboard did not need to be rewritten, only
+ * redirected.
+ *
+ * The PDF deliberately does not import any of this. It carries its own fixed
+ * palette in `src/pdf/ReportTemplate.tsx`, because a printed artifact has no
+ * mode to follow, and `var()` would resolve to nothing in the renderer.
+ */
 export const COLORS = {
-  bg: '#0A0E1A',
-  surface: '#131825',
-  hairline: '#1F2637',
-  cyan: '#00E5FF',
-  good: '#00E676',
-  warn: '#FFB300',
-  bad: '#FF3D3D',
-  ink: '#E8EDF7',
-  inkMuted: '#8A94AD',
+  bg: 'rgb(var(--ground))',
+  surface: 'rgb(var(--panel))',
+  hairline: 'rgb(var(--line))',
+  /** The seal. Formerly cyan, which was the tell of the genre. */
+  cyan: 'rgb(var(--seal))',
+  good: 'rgb(var(--risk-good))',
+  warn: 'rgb(var(--risk-warn))',
+  bad: 'rgb(var(--risk-bad))',
+  ink: 'rgb(var(--tx))',
+  inkMuted: 'rgb(var(--tx-2))',
 } as const;
 
 export const SEVERITY_ORDER: Record<string, number> = {
@@ -142,19 +157,42 @@ export const SEVERITY_ORDER: Record<string, number> = {
   info: 4,
 };
 
+/**
+ * Severity, which is trust-critical and therefore solved rather than chosen.
+ *
+ * Each value is the least saturated point on its hue that still clears 4.6:1
+ * against the lightest surface it is ever set on, computed separately for each
+ * theme. Two consequences worth stating: the set leaves the neon register that
+ * every tool in this category reaches for, and no severity is below the 4.5:1
+ * floor in either mode — which the previous set could not claim, `info` having
+ * sat at 3.60.
+ */
 export const SEVERITY_COLORS: Record<string, string> = {
   critical: COLORS.bad,
-  high: '#FF7043',
+  high: 'rgb(var(--risk-high))',
   medium: COLORS.warn,
-  low: '#4FC3F7',
-  info: COLORS.inkMuted,
+  low: 'rgb(var(--risk-low))',
+  info: 'rgb(var(--risk-info))',
 };
 
 /** Per-check network budget. The orchestrator adds its own hard ceiling. */
 export const CHECK_TIMEOUT_MS = 10_000;
 
-/** Rate limiting: max scans per IP per rolling window. */
-export const RATE_LIMIT_MAX = 10;
+/**
+ * Rate limiting: max scans per IP per rolling window.
+ *
+ * Raised from ten. Ten was sized against abuse and never against use: a real
+ * evaluation session walks a supplier list, and a procurement reader working
+ * through eight vendors, re-running two of them, and assessing their own
+ * domain for the comparison had already spent the allowance before lunch. The
+ * concurrency ceiling is what actually protects the instance from a burst —
+ * this number protects it from a slow drip, and thirty is still far below what
+ * one address can be doing honestly.
+ *
+ * Read everywhere it is stated rather than restated: the 429 body and both
+ * lines on the scanner disclosure page interpolate it.
+ */
+export const RATE_LIMIT_MAX = 30;
 export const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 /**

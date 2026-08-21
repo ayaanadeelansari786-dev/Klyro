@@ -81,7 +81,7 @@ export default function RadarChart({ categories, benchmark }: RadarChartProps) {
               key={level}
               points={polygon(new Array(count).fill(level), R)}
               fill="none"
-              stroke={level === 100 ? '#272C35' : '#1C2027'}
+              stroke={level === 100 ? 'rgb(var(--line-strong))' : 'rgb(var(--line))'}
               strokeWidth="1"
             />
           ))}
@@ -96,7 +96,7 @@ export default function RadarChart({ categories, benchmark }: RadarChartProps) {
                 y1={CY}
                 x2={p.x}
                 y2={p.y}
-                stroke="#1C2027"
+                stroke="rgb(var(--line))"
                 strokeWidth="1"
               />
             );
@@ -109,7 +109,7 @@ export default function RadarChart({ categories, benchmark }: RadarChartProps) {
                 R,
               )}
               fill="none"
-              stroke="#4A515E"
+              stroke="rgb(var(--tx-3))"
               strokeWidth="1.25"
               strokeDasharray="3 3"
             />
@@ -154,7 +154,7 @@ export default function RadarChart({ categories, benchmark }: RadarChartProps) {
                 fontSize="10.5"
                 fontFamily="var(--font-mono)"
                 letterSpacing="0.04em"
-                fill={dim ? COLORS.bad : '#9AA1AD'}
+                fill={dim ? COLORS.bad : COLORS.inkMuted}
               >
                 {axis.label}
               </text>
@@ -173,7 +173,7 @@ export default function RadarChart({ categories, benchmark }: RadarChartProps) {
           {hasPeerData ? (
             <span className="flex items-center gap-2 text-[11.5px] text-tx-3">
               <span
-                className="h-0 w-4 border-t border-dashed border-[#4A515E]"
+                className="h-0 w-4 border-t border-dashed border-tx-3"
                 aria-hidden="true"
               />
               Pool average

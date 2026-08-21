@@ -3,11 +3,16 @@
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
-import { INDUSTRIES, REGIONS } from '@/lib/constants';
+import { useSheen } from '@/components/motion';
+import { CATEGORY_ORDER, INDUSTRIES, REGIONS } from '@/lib/constants';
 import { parseDomain } from '@/lib/domain';
 
 export default function ScanForm() {
   const router = useRouter();
+
+  /* Glazed, so the guilloché behind the hero passes under it; the sheen tracks
+     the pointer across the glass. See the glass rules in globals.css. */
+  const panelRef = useSheen<HTMLFormElement>();
 
   const [domain, setDomain] = useState('');
   const [industry, setIndustry] = useState<string>(INDUSTRIES[0]);
@@ -65,7 +70,7 @@ export default function ScanForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="panel w-full shadow-lift" noValidate>
+    <form ref={panelRef} onSubmit={handleSubmit} className="glass sheen w-full" noValidate>
       {/* Domain — the command line of the product, sized accordingly. */}
       <div className="px-6 pb-5 pt-6 sm:px-8 sm:pt-7">
         <label htmlFor="domain" className="micro block">
@@ -87,7 +92,8 @@ export default function ScanForm() {
           aria-invalid={Boolean(error)}
           aria-describedby={error ? 'domain-error' : 'domain-hint'}
           className="mt-3 w-full border-0 bg-transparent p-0 font-mono text-[26px] leading-none
-            tracking-tight text-tx outline-none placeholder:text-tx-3 focus:outline-none sm:text-[32px]"
+            tracking-tight text-tx outline-none placeholder:text-tx-3 sm:text-[32px]
+            focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seal-ink"
         />
 
         <div className="mt-4 min-h-[18px]">
@@ -149,7 +155,7 @@ export default function ScanForm() {
             aria-describedby={contextError ? 'context-error' : 'context-hint'}
             className="mt-3 w-full border-0 border-b border-line bg-transparent px-0 pb-2.5 font-mono
               text-[18px] leading-none tracking-tight text-tx outline-none placeholder:text-tx-3
-              focus:border-line-strong focus:outline-none"
+              focus:border-line-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seal-ink"
           />
 
           {contextError ? (
@@ -172,7 +178,7 @@ export default function ScanForm() {
           type="button"
           onClick={() => setContextOpen(true)}
           className="flex w-full items-start gap-3.5 px-6 py-5 text-left transition-colors
-            duration-150 hover:bg-raised sm:px-8"
+            duration-150 hover:bg-tx/[0.035] sm:px-8"
         >
           <svg
             width="14"
@@ -260,16 +266,17 @@ export default function ScanForm() {
 
       <div className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
         <p className="order-2 text-[11.5px] leading-relaxed text-tx-3 sm:order-1 sm:max-w-xs">
-          Ten passive checks. Public sources and ordinary web requests only.
+          {CATEGORY_ORDER.length} passive checks, most scans in 20 to 45 seconds. Public sources and
+          ordinary web requests only.
         </p>
         <button
           type="submit"
           disabled={submitting}
-          className="btn-primary order-1 w-full px-7 py-3 text-[14px] sm:order-2 sm:w-auto"
+          className="btn-seal order-1 w-full px-7 py-3 text-[14px] sm:order-2 sm:w-auto"
         >
           {submitting ? (
             <>
-              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-ground/25 border-t-ground" />
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-seal-on/30 border-t-seal-on" />
               Starting
             </>
           ) : (

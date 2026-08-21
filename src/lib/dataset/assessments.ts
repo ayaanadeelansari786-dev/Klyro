@@ -147,7 +147,7 @@ async function storeHosts(
 const REPORT_COLUMNS =
   'id, domain, industry, region, composite_score, risk_level, coverage, tool_version, ' +
   'scanned_at, category_scores, categories, findings, inventory, benchmark, owner_org_id, ' +
-  'contributes_to_benchmark';
+  'contributes_to_benchmark, executive_summary';
 
 interface StoredRow {
   id: string;
@@ -166,6 +166,22 @@ interface StoredRow {
   benchmark: BenchmarkResult | null;
   owner_org_id: string | null;
   contributes_to_benchmark: boolean | null;
+  executive_summary: CachedSummary | null;
+}
+
+/**
+ * The cached plain-language summary, as stored.
+ *
+ * `toolVersion` is kept alongside the prose so a summary written by an older
+ * Klyro can be told apart from the assessment it describes. Nothing reads it
+ * yet; it is here because a cache with no way to tell what produced it is a
+ * cache that can only be thrown away wholesale.
+ */
+export interface CachedSummary {
+  summary: string;
+  generated: boolean;
+  generatedAt: string;
+  toolVersion?: string;
 }
 
 export interface LoadedAssessment {
@@ -176,6 +192,8 @@ export interface LoadedAssessment {
   orgId: string | null;
   /** Whether this run was also published to the shared corpus. */
   contributesToBenchmark: boolean;
+  /** A previously generated summary, when one has been asked for before. */
+  executiveSummary: CachedSummary | null;
 }
 
 /**
@@ -243,7 +261,38 @@ export async function loadAssessmentForReport(
     benchmark: row.benchmark,
     orgId: row.owner_org_id,
     contributesToBenchmark: row.contributes_to_benchmark === true,
+    executiveSummary: row.executive_summary ?? null,
   };
+}
+
+/**
+ * Writes the generated summary back onto the assessment.
+ *
+ * Through the service role, and only through the service role. The
+ * append-only trigger on `assessments` rejects a change to this column from
+ * any other role — see migration 0009 — because a client that could set it
+ * could publish arbitrary prose about a third party as a Klyro document, which
+ * is the same objection that makes the findings immutable.
+ *
+ * Best effort. A failed write costs one extra model call the next time
+ * somebody downloads this summary; it must never cost the caller the document
+ * they have already waited for.
+ */
+export async function cacheExecutiveSummary(
+  assessmentId: string,
+  summary: CachedSummary,
+): Promise<void> {
+  const supabase = createServiceClient();
+  if (!supabase) return;
+
+  try {
+    await supabase
+      .from('assessments')
+      .update({ executive_summary: summary })
+      .eq('id', assessmentId);
+  } catch {
+    /* See above — the document has already been produced. */
+  }
 }
 
 /* ------------------------------------------------------------------ *

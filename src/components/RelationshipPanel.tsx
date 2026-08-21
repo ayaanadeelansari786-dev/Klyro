@@ -9,7 +9,7 @@ const TONE = { good: COLORS.good, warn: COLORS.warn, bad: COLORS.bad } as const;
 const LEVEL_STYLE: Record<ConcernLevel, { color: string; label: string }> = {
   high: { color: COLORS.bad, label: 'act on this' },
   medium: { color: COLORS.warn, label: 'raise it' },
-  low: { color: '#4FC3F7', label: 'note it' },
+  low: { color: 'rgb(var(--risk-low))', label: 'note it' },
   note: { color: COLORS.inkMuted, label: 'your side' },
 };
 

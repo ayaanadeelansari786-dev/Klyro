@@ -68,6 +68,41 @@ export default function FindingDetail({ finding }: { finding: Finding }) {
           )}
         </dl>
       </div>
+
+      {/*
+       * Generated context, kept visibly apart from everything above it.
+       *
+       * Collapsed by default, on its own surface, with its provenance in the
+       * summary line rather than in a footnote. Every other block on this card
+       * is something Klyro measured; this one is something a model wrote about
+       * those measurements, and a reader must never have to work out which is
+       * which. That is why it does not adopt the OBSERVED / INTERPRETATION
+       * styling, and why it sits after the evidence rather than beside it.
+       */}
+      {finding.aiContext?.generated && finding.aiContext.narrative && (
+        <details className="rounded border border-dashed border-line-strong bg-raised">
+          <summary
+            className="cursor-pointer list-none px-4 py-3 text-[11.5px] text-tx-2
+              transition-colors duration-150 hover:text-tx
+              focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+              focus-visible:outline-seal-ink"
+          >
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-seal-ink">
+              AI-generated context
+            </span>
+            <span className="ml-2 text-tx-3">grounded in this scan&apos;s data</span>
+          </summary>
+          <div className="border-t border-line px-4 py-3.5">
+            <p className="text-[12.5px] leading-relaxed text-tx-2">
+              {finding.aiContext.narrative}
+            </p>
+            <p className="mt-3 text-[11px] leading-relaxed text-tx-3">
+              Written by a language model from the findings and measurements on this page. It
+              introduces no new observations, and it does not change the severity above.
+            </p>
+          </div>
+        </details>
+      )}
     </div>
   );
 }

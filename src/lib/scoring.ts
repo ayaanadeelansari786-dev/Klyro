@@ -88,6 +88,88 @@ export function computeComposite(categories: CategoryResult[]): {
   };
 }
 
+/* ------------------------------------------------------------------ *
+ * Coverage transparency
+ * ------------------------------------------------------------------ */
+
+/**
+ * Below this share of scoring weight, the score is reported with a warning
+ * above it rather than a footnote below it.
+ *
+ * The number a reader takes away from a 36%-coverage scan is "Moderate Risk",
+ * and left unqualified that reads as a statement about the organisation. It is
+ * not — it is a statement about how much of the domain Klyro could reach. The
+ * two are easy to confuse and expensive to confuse, so under this threshold
+ * the caveat is placed where it cannot be missed.
+ */
+export const LOW_COVERAGE_THRESHOLD = 0.6;
+
+/** How many modules actually produced a score, out of how many were run. */
+export function coverageCounts(result: {
+  categories: CategoryResult[];
+}): { assessed: number; total: number } {
+  return {
+    assessed: result.categories.filter((c) => c.status === 'assessed').length,
+    total: result.categories.length,
+  };
+}
+
+/**
+ * Why so little of this domain could be assessed.
+ *
+ * Written from `status`, which every category always carries, rather than from
+ * `facts`, which the report payload sanitiser drops — an explanation that only
+ * appeared on the dashboard and went blank in the PDF would be worse than a
+ * generic one in both.
+ *
+ * Each branch names a specific, checkable cause. A generic "some checks did
+ * not complete" tells the reader nothing they could act on and does not
+ * distinguish the two cases that matter most: a domain that serves no website
+ * at all, and one that serves a website which refused to talk to Klyro.
+ */
+export function explainLowCoverage(result: { categories: CategoryResult[] }): string {
+  const statusOf = (key: CategoryKey) =>
+    result.categories.find((c) => c.key === key)?.status ?? null;
+
+  const dnsAssessed = statusOf('dns') === 'assessed';
+  const headersReached = statusOf('headers') === 'assessed';
+
+  const dnsFacts = result.categories.find((c) => c.key === 'dns')?.facts as
+    | { ipv4?: string[]; ipv6?: string[] }
+    | undefined;
+  // Undefined when facts were stripped; only used to sharpen the wording, and
+  // never to decide which branch applies.
+  const apexAddresses = dnsFacts
+    ? (dnsFacts.ipv4?.length ?? 0) + (dnsFacts.ipv6?.length ?? 0)
+    : null;
+
+  if (!dnsAssessed) {
+    return (
+      'The DNS records for this domain could not be read, which is what most of the other checks ' +
+      'build on. The score reflects only what could be measured, and is not a statement about how ' +
+      'this domain is run.'
+    );
+  }
+
+  if (!headersReached) {
+    const noApex = apexAddresses === 0;
+    return (
+      (noApex
+        ? 'This domain publishes DNS records but no address at its apex, so nothing serves a website there. '
+        : 'This domain has DNS records, but no web server answered at the address they point to. ') +
+      'Checks that need a live site — security headers, cookies, exposed paths, CORS and the ' +
+      'technology profile — had nothing to read. This is normal for a domain used only for email, ' +
+      'or one that exists to redirect somewhere else. The score reflects only what could be measured.'
+    );
+  }
+
+  return (
+    'A web server answered, but several checks could not complete — commonly a firewall, WAF or ' +
+    'bot-protection layer refusing automated requests. That is a fact about what Klyro was allowed ' +
+    'to see, not a finding about the domain. The score reflects only what could be measured.'
+  );
+}
+
 export function buildScanResult(
   target: ScanTarget,
   categories: CategoryResult[],

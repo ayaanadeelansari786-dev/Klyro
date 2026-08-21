@@ -214,10 +214,18 @@ describe('DMARC policy', () => {
     stubFetch({ dns: table({ [dnsKey(`_dmarc.${DOMAIN}`, 'TXT')]: { status: 0, answers: [] } }) });
     const out = await checkEmailSecurity(DOMAIN);
 
+    /*
+     * The default zone publishes `v=spf1 -all`, so removing DMARC leaves the
+     * case two reviewers flagged: SPF *does* instruct receivers to reject, and
+     * the old title said nothing did. The finding is still raised — the
+     * From-header gap is real — but it now names that gap instead of denying
+     * the SPF record exists. See tests/email-auth-wording.test.ts.
+     */
     const combined = out.findings.find(
-      (f) => f.title === 'Nothing published instructs receivers to reject forged mail',
+      (f) => f.title === 'SPF rejects forged senders, but nothing covers the visible From address',
     );
     expect(combined).toBeDefined();
+    expect(combined?.severity).toBe('high');
     // The claim is about what the domain publishes, never about what a
     // receiving server would do with a specific message.
     expect(combined?.evidence.limitation).toMatch(/did not send any email/i);

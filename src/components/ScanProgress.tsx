@@ -48,8 +48,9 @@ export default function ScanProgress({
             {domain}
           </h1>
           <p className="mt-4 max-w-md text-[12.5px] leading-relaxed text-tx-2">
-            Reading public exposure data across {modules.length} categories. Typically 15 to 30
-            seconds, bounded by how fast the certificate transparency logs answer.
+            Reading public exposure data across {modules.length} categories. Most scans finish in 20
+            to 45 seconds, bounded by how fast the certificate transparency logs answer — a domain
+            with a large public footprint takes the longer end of that.
           </p>
         </div>
 

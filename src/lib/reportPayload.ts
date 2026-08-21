@@ -105,6 +105,40 @@ function cleanFinding(raw: unknown, index: number): Finding {
         evidence.limitation === undefined ? undefined : str(evidence.limitation, LIMITS.evidenceLine),
     },
     scoreImpact: typeof f.scoreImpact === 'number' ? num(f.scoreImpact, 0, 100, 0) : undefined,
+    aiContext: cleanAiContext(f.aiContext),
+  };
+}
+
+/**
+ * Generated context, rebuilt like everything else.
+ *
+ * It has to survive the sanitiser or the anonymous report loses the notes the
+ * scan produced — `cleanFinding` drops anything it does not name. It is
+ * clamped the same way the prose fields are, and `generated` is required to be
+ * literally `true` before a narrative is carried: a caller who posts
+ * `{narrative: "...", generated: false}` gets nothing, which keeps the flag
+ * and the text from disagreeing.
+ *
+ * This does widen what a forged payload can contain by one prose field. That
+ * is the same exposure `observed` and `interpretation` already carry, and it
+ * is bounded the same way — see the note at the top of this file, which is
+ * honest that the anonymous path can only be narrowed, not made trustworthy.
+ */
+function cleanAiContext(raw: unknown): Finding['aiContext'] {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const a = raw as Record<string, unknown>;
+  if (a.generated !== true) return undefined;
+
+  const narrative = str(a.narrative, LIMITS.prose);
+  if (!narrative) return undefined;
+
+  return {
+    narrative,
+    generated: true,
+    generatedAt:
+      typeof a.generatedAt === 'string' && !Number.isNaN(Date.parse(a.generatedAt))
+        ? a.generatedAt
+        : undefined,
   };
 }
 

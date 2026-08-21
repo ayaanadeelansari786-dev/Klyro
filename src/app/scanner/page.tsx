@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { PageFooter, Wordmark } from '@/components/Chrome';
+import { PageFooter, SiteHeader } from '@/components/Chrome';
 import { PROBE_MANIFEST } from '@/lib/checks/exposed-paths';
 import { MAX_HTTP_PROBES, MAX_LIVENESS_PROBES } from '@/lib/checks/subdomains';
 import { USER_AGENT } from '@/lib/checks/util';
@@ -64,8 +64,7 @@ function Recipe({ label, code }: { label: string; code: string }) {
 export default function ScannerPage() {
   return (
     <main className="mx-auto w-full max-w-[1180px] px-5 py-6 sm:px-8 sm:py-8">
-      <header className="flex items-center justify-between">
-        <Wordmark />
+      <SiteHeader>
         <nav className="flex items-center gap-6">
           <Link
             href="/"
@@ -75,7 +74,7 @@ export default function ScannerPage() {
           </Link>
           <span className="micro hidden sm:inline">Scanner disclosure</span>
         </nav>
-      </header>
+      </SiteHeader>
 
       <div className="max-w-[64ch] py-14 lg:py-20">
         <p className="micro">KlyroExposureScanner {TOOL_VERSION}</p>
@@ -87,6 +86,14 @@ export default function ScannerPage() {
           it, and it made a set of ordinary HTTP requests to that domain to measure what the domain
           publishes to the open internet. This page lists every request it makes, states what it
           does not do, and gives you a rule that stops it.
+        </p>
+        <p className="mt-4 text-[13.5px] leading-relaxed text-tx-3">
+          If your question is about the output rather than the traffic — how findings are written,
+          what the confidence levels mean, how the score is computed —{' '}
+          <Link href="/methodology" className="text-seal-ink underline underline-offset-2">
+            the methodology page
+          </Link>{' '}
+          is the companion to this one.
         </p>
       </div>
 

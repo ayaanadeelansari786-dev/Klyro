@@ -20,19 +20,19 @@ import type { RiskTier, SubdomainResult } from '@/lib/types';
  */
 
 const TIER_STYLE: Record<RiskTier, { bar: string; text: string; dot: string }> = {
-  critical: { bar: 'bg-bad/15 border-bad/40', text: 'text-bad', dot: 'bg-bad' },
-  high: { bar: 'bg-[#FF7043]/12 border-[#FF7043]/35', text: 'text-[#FF7043]', dot: 'bg-[#FF7043]' },
-  medium: { bar: 'bg-warn/12 border-warn/30', text: 'text-warn', dot: 'bg-warn' },
-  low: { bar: 'bg-[#4FC3F7]/10 border-[#4FC3F7]/25', text: 'text-[#4FC3F7]', dot: 'bg-[#4FC3F7]' },
+  critical: { bar: 'bg-risk-bad/15 border-risk-bad/40', text: 'text-risk-bad', dot: 'bg-risk-bad' },
+  high: { bar: 'bg-risk-high/12 border-risk-high/35', text: 'text-risk-high', dot: 'bg-risk-high' },
+  medium: { bar: 'bg-risk-warn/12 border-risk-warn/30', text: 'text-risk-warn', dot: 'bg-risk-warn' },
+  low: { bar: 'bg-risk-low/10 border-risk-low/25', text: 'text-risk-low', dot: 'bg-risk-low' },
   info: { bar: 'bg-raised border-line', text: 'text-tx-3', dot: 'bg-tx-3' },
 };
 
 /** Green for a served page, amber for a gate, red for a fault, grey for silence. */
 function statusTone(status: number | null): string {
   if (status === null) return 'border-line text-tx-3';
-  if (status >= 200 && status < 300) return 'border-good/40 text-good';
-  if (status >= 300 && status < 500) return 'border-warn/40 text-warn';
-  return 'border-bad/40 text-bad';
+  if (status >= 200 && status < 300) return 'border-risk-good/40 text-risk-good';
+  if (status >= 300 && status < 500) return 'border-risk-warn/40 text-risk-warn';
+  return 'border-risk-bad/40 text-risk-bad';
 }
 
 function statusLabel(result: SubdomainResult): string {

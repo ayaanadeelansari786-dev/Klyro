@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import BenchmarkOptIn from '@/components/BenchmarkOptIn';
-import { PageFooter, Wordmark } from '@/components/Chrome';
+import { PageFooter, SiteHeader } from '@/components/Chrome';
 import JoinCodePanel from '@/components/JoinCodePanel';
 import { roleAtLeast, type OrgRole } from '@/lib/auth/context';
 import { createClientForRequest, getCurrentUser } from '@/lib/supabase/server';
@@ -31,7 +31,7 @@ export default async function OrgPage({ params }: { params: { orgId: string } })
   if (!user || !supabase) {
     return (
       <main className="mx-auto w-full max-w-[1180px] px-5 py-16 sm:px-8">
-        <Wordmark />
+        <SiteHeader />
         <p className="mt-10 text-[13.5px] text-tx-2">
           <Link href="/login" className="text-tx underline decoration-line-strong underline-offset-4">
             Sign in
@@ -114,8 +114,7 @@ export default async function OrgPage({ params }: { params: { orgId: string } })
 
   return (
     <main className="mx-auto w-full max-w-[1180px] px-5 py-6 sm:px-8 sm:py-8">
-      <header className="flex items-center justify-between">
-        <Wordmark />
+      <SiteHeader>
         <nav className="flex items-center gap-6">
           <Link href="/org" className="text-[12.5px] text-tx-2 transition-colors hover:text-tx">
             All organisations
@@ -124,7 +123,7 @@ export default async function OrgPage({ params }: { params: { orgId: string } })
             Your assessments
           </Link>
         </nav>
-      </header>
+      </SiteHeader>
 
       <div className="py-12 lg:py-16">
         <p className="micro">Organisation</p>

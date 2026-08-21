@@ -129,6 +129,29 @@ function sweep(now: number, force = false) {
   }
 }
 
+/**
+ * Drops one recorded hit, identified by the timestamp the consume wrote.
+ *
+ * Matching on the exact stamp rather than popping the newest matters because
+ * the same bucket is shared: between a scan's consume and its refund, a second
+ * request from the same address can have landed, and taking the newest hit
+ * would return that caller's token instead of this one's. The two are
+ * interchangeable in arithmetic but not in expiry — the sliding window is a
+ * list of instants, and returning the wrong instant moves when the window
+ * reopens.
+ */
+function refundInMemory(key: string, stamp: number) {
+  const bucket = buckets.get(key);
+  if (!bucket) return;
+
+  const at = bucket.hits.lastIndexOf(stamp);
+  // Already swept out, or already refunded. Both are no-ops rather than errors.
+  if (at === -1) return;
+
+  bucket.hits.splice(at, 1);
+  if (bucket.hits.length === 0) buckets.delete(key);
+}
+
 function consumeInMemory(key: string, max: number, windowMs: number): RateLimitResult {
   const now = Date.now();
   sweep(now, buckets.size > MAX_BUCKETS);
@@ -143,13 +166,21 @@ function consumeInMemory(key: string, max: number, windowMs: number): RateLimitR
       allowed: false,
       remaining: 0,
       retryAfterSeconds: Math.max(1, Math.ceil((windowMs - (now - oldest)) / 1000)),
+      refund: NO_REFUND,
     };
   }
 
   bucket.hits.push(now);
   buckets.set(key, bucket);
 
-  return { allowed: true, remaining: max - bucket.hits.length, retryAfterSeconds: 0 };
+  return {
+    allowed: true,
+    remaining: max - bucket.hits.length,
+    retryAfterSeconds: 0,
+    refund: refundOnce(() => {
+      refundInMemory(key, now);
+    }),
+  };
 }
 
 /* ------------------------------------------------------------------ *
@@ -160,6 +191,53 @@ export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
   retryAfterSeconds: number;
+  /**
+   * Hands back the unit this call spent.
+   *
+   * For requests that were rejected *after* the limiter ran, before any real
+   * work happened — a domain that does not resolve is the case this exists for.
+   * The limiter deliberately runs ahead of DNS so Klyro cannot be used as an
+   * open query relay, which means a typo costs a token before anything has
+   * established that it was a typo. This returns that token rather than moving
+   * the check, so the relay protection is untouched.
+   *
+   * Deliberately a closure rather than a `refundRateLimit(key)` function.
+   * There are two backing stores here and a request may have been served by
+   * either — Redis normally, the in-memory map when Upstash is unconfigured or
+   * was unreachable for that one call. A free function would have to guess
+   * which, and the sliding window needs the *instant* the hit was recorded,
+   * not just its key. Closing over both makes the refund land where the charge
+   * did, by construction.
+   *
+   * Three properties callers can rely on:
+   *
+   * - Idempotent. A second call does nothing.
+   * - Never throws. A refund that fails leaves the window one token tighter
+   *   than ideal, which must not turn into an error on a response that has
+   *   already been decided.
+   * - A no-op when `allowed` is false. A refused request never incremented
+   *   anything — in both implementations the ceiling check precedes the write
+   *   — so crediting one back would hand out a token nobody spent, and make
+   *   the limit trivially bypassable by anyone willing to retry a refusal.
+   */
+  refund: () => Promise<void>;
+}
+
+/** For results where nothing was spent, so nothing is owed. */
+const NO_REFUND = async () => undefined;
+
+/** Wraps a refund so it runs at most once and cannot throw. */
+function refundOnce(action: () => void | Promise<unknown>): () => Promise<void> {
+  let spent = false;
+  return async () => {
+    if (spent) return;
+    spent = true;
+    try {
+      await action();
+    } catch {
+      // Non-fatal by design — see the note on `refund` above.
+    }
+  };
 }
 
 /**
@@ -184,6 +262,15 @@ export async function consumeRateLimit(
         retryAfterSeconds: verdict.success
           ? 0
           : Math.max(1, Math.ceil((verdict.reset - Date.now()) / 1000)),
+        // A negative rate is the library's own refund path: the sliding-window
+        // script skips the ceiling check when `incrementBy` is negative and
+        // applies a plain INCRBY, so the token goes back into the same bucket
+        // it came out of. Doing it through the limiter rather than by reaching
+        // for the underlying key keeps Klyro out of the business of knowing
+        // how Upstash names its windows.
+        refund: verdict.success
+          ? refundOnce(() => limiter.limit(key, { rate: -1 }))
+          : NO_REFUND,
       };
     } catch {
       // Redis unreachable. Fall through rather than failing the request: a

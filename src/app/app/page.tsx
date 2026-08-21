@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { PageFooter, Wordmark } from '@/components/Chrome';
+import { PageFooter, SiteHeader } from '@/components/Chrome';
 import { recentAssessments, assessmentFromRow } from '@/lib/dataset/history';
 import { createClientForRequest, getCurrentUser } from '@/lib/supabase/server';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -42,8 +42,7 @@ export default async function AppPage() {
 
   return (
     <main className="mx-auto w-full max-w-[1180px] px-5 py-6 sm:px-8 sm:py-8">
-      <header className="flex items-center justify-between">
-        <Wordmark />
+      <SiteHeader>
         <nav className="flex items-center gap-6">
           <Link href="/" className="text-[12.5px] text-tx-2 transition-colors hover:text-tx">
             New assessment
@@ -52,7 +51,7 @@ export default async function AppPage() {
             Organisations
           </Link>
         </nav>
-      </header>
+      </SiteHeader>
 
       <div className="py-12 lg:py-16">
         <p className="micro">Saved assessments</p>

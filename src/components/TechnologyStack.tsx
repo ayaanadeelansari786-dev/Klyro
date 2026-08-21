@@ -27,17 +27,17 @@ const GROUPS: { key: TechnologyCategory; label: string; blurb: string }[] = [
   { key: 'other', label: 'Other services', blurb: 'From DNS verification records' },
 ];
 
-const DOT: Record<TechnologyCategory, string> = {
-  infrastructure: 'bg-cyan',
-  frontend: 'bg-[#4FC3F7]',
-  security: 'bg-good',
-  analytics: 'bg-warn',
-  marketing: 'bg-[#FF7043]',
-  payment: 'bg-[#B39DDB]',
-  support: 'bg-[#80CBC4]',
-  email: 'bg-[#9FA8DA]',
-  other: 'bg-tx-3',
-};
+/*
+ * One neutral bullet, not nine hues.
+ *
+ * The nine-entry map this replaces named four colours that were never in the
+ * theme — `bg-cyan`, `bg-good`, `bg-warn` — so those categories had been
+ * rendering an invisible dot. Restoring them as nine distinct hues would have
+ * been the wrong repair twice over: the pills are already grouped under a
+ * heading that names the category, the dot is `aria-hidden` and carries
+ * nothing, and hue in this system means risk. A technology is not a risk.
+ */
+const DOT = 'bg-tx-3';
 
 function Pill({ tech }: { tech: DetectedTechnology }) {
   return (
@@ -45,13 +45,13 @@ function Pill({ tech }: { tech: DetectedTechnology }) {
       className="inline-flex items-center gap-1.5 rounded-full border border-line bg-raised px-2.5 py-1 text-[11.5px] text-tx-2"
       title={tech.evidence}
     >
-      <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${DOT[tech.category]}`} />
+      <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${DOT}`} />
       {tech.name}
       {tech.version && <span className="font-mono text-[10.5px] text-tx-3">{tech.version}</span>}
       {tech.version && (
         // A published version is not a vulnerability, and the marker never says
         // it is. It flags that the build number is readable from outside.
-        <span aria-hidden="true" title="Version published in the response" className="text-warn">
+        <span aria-hidden="true" title="Version published in the response" className="text-risk-warn">
           ⚑
         </span>
       )}

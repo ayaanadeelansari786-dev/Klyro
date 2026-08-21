@@ -259,9 +259,31 @@ export interface TargetVerdict {
  * public host has no reason to publish a private address, and a mixed answer
  * is the shape of a deliberate attempt to get one past the check.
  */
+/**
+ * The DNS interface both pre-flight checks take, so tests can drive them.
+ *
+ * `status` is the RCODE. It is the field that separates "this name does not
+ * exist" (3, NXDOMAIN) from "this name exists and has no record of that type"
+ * (0 with an empty answer), and those two are not the same question.
+ */
+export type Resolver = (
+  name: string,
+  type: string,
+) => Promise<{
+  resolved: boolean;
+  /**
+   * Optional because `screenTarget` has no use for it — it cares only about
+   * the addresses. A resolver that omits it cannot be used to assert that a
+   * name is missing, which is the safe direction: pre-flight then fails open
+   * and the scan proceeds.
+   */
+  status?: number | null;
+  answers: { data: string; type: number }[];
+}>;
+
 export async function screenTarget(
   domain: string,
-  resolve: (name: string, type: string) => Promise<{ resolved: boolean; answers: { data: string; type: number }[] }>,
+  resolve: Resolver,
 ): Promise<TargetVerdict> {
   const named = screenName(domain);
   if (!named.ok) return { ok: false, error: named.error, addresses: [] };
@@ -285,4 +307,155 @@ export async function screenTarget(
   }
 
   return { ok: true, addresses };
+}
+
+/* ------------------------------------------------------------------ *
+ * Existence
+ *
+ * Separate from the screening above, and answering a different question.
+ * `screenTarget` asks "may Klyro connect to this?"; this asks "is there
+ * anything here at all?" A name with no address is not a security problem —
+ * it is a typo, and it deserves to be told apart from one in under two
+ * seconds rather than after eleven modules have each failed to reach it.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Second-level labels that are part of a public suffix rather than part of
+ * somebody's name. `X.co.ae` is a registered name; swapping its `.ae` for
+ * `.com` would produce `X.co.com`, which is nonsense.
+ */
+const AE_SECOND_LEVEL = new Set(['ac', 'co', 'gov', 'org', 'net', 'sch', 'mil']);
+
+/** At most this many variants are probed, so a typo cannot cost a long wait. */
+const MAX_VARIANT_PROBES = 3;
+
+/**
+ * Plausible corrections for a name that does not resolve.
+ *
+ * Scoped deliberately narrowly to the confusion that actually came up in
+ * testing — `.ae` against `.com` — rather than attempting general spelling
+ * correction. A wrong suggestion is worse than none: it invites the reader to
+ * assess a domain they did not mean and may not have any relationship with.
+ * Every candidate is confirmed to resolve before it is offered.
+ */
+export function variantsFor(domain: string): string[] {
+  const host = domain.toLowerCase().replace(/\.$/, '');
+  const labels = host.split('.');
+  const out: string[] = [];
+
+  const add = (candidate: string) => {
+    if (candidate !== host && !out.includes(candidate)) out.push(candidate);
+  };
+
+  if (host.endsWith('.ac.ae')) {
+    // fad.ac.ae → fad.ae. Universities in the UAE sit under both.
+    add(`${host.slice(0, -'.ac.ae'.length)}.ae`);
+  }
+
+  if (host.endsWith('.ae')) {
+    const secondLevel = labels.length >= 3 ? labels[labels.length - 2] : null;
+    // Only when `.ae` is the whole suffix — never turn `X.co.ae` into `X.co.com`.
+    if (!secondLevel || !AE_SECOND_LEVEL.has(secondLevel)) {
+      add(`${host.slice(0, -'.ae'.length)}.com`);
+    }
+  }
+
+  if (host.endsWith('.com')) {
+    add(`${host.slice(0, -'.com'.length)}.ae`);
+  }
+
+  return out.slice(0, MAX_VARIANT_PROBES);
+}
+
+/** RCODE 3. The name itself is not in the DNS. */
+const NXDOMAIN = 3;
+
+export interface PreflightResult {
+  /**
+   * Whether the *name* exists, which is not the same as whether it has an
+   * address. A domain that answers NOERROR with no records — no apex A, mail
+   * and subdomains only — exists, and refusing to assess it would be wrong.
+   */
+  exists: boolean;
+  hasARecord: boolean;
+  hasAAAARecord: boolean;
+  /** A name that does resolve, when one of the variants did. */
+  suggestion?: string;
+}
+
+/**
+ * Does this domain exist?
+ *
+ * `knownAddresses` lets the caller hand over what it has already resolved —
+ * the scan route runs `screenTarget` first, which queries exactly these two
+ * record types, so passing its answer through means an existing domain adds no
+ * DNS work and no latency to the normal path. Only a name that resolves to
+ * nothing pays for the variant probes, which is the correct place for that
+ * cost to fall.
+ *
+ * Absence here is a much weaker claim than the DNS module makes elsewhere: it
+ * is one lookup, not a confirmed absence across two resolvers. That is
+ * deliberate. The consequence of being wrong is a refused scan the reader can
+ * immediately retry, not a finding published about a domain.
+ */
+export async function preflightDomainCheck(
+  domain: string,
+  resolve: Resolver,
+  knownAddresses?: string[],
+): Promise<PreflightResult> {
+  /*
+   * An address already in hand settles it, and settles it for free. This is
+   * the path almost every real scan takes, so it must add no DNS work.
+   */
+  if (knownAddresses && knownAddresses.length > 0) {
+    return {
+      exists: true,
+      hasARecord: knownAddresses.some((a) => !a.includes(':')),
+      hasAAAARecord: knownAddresses.some((a) => a.includes(':')),
+    };
+  }
+
+  /*
+   * No address. That is where the two cases that look identical part company,
+   * and the distinction is the whole correctness of this check:
+   *
+   *   emiratesnbd.ae  → NOERROR, zero answers. The zone is delegated and the
+   *                     name exists; it simply publishes nothing at the apex.
+   *                     A real domain, and blocking it would be a far worse
+   *                     bug than the confusing report this check exists to
+   *                     prevent.
+   *   fad.ac.ae       → NXDOMAIN. The name is not registered at all.
+   *
+   * Keying off "has an A record" cannot tell those apart. The RCODE can, so
+   * that is what decides it. Absence is only claimed when *both* families say
+   * NXDOMAIN — a single resolver hiccup on one of them is not enough to refuse
+   * somebody's scan.
+   */
+  const [a, aaaa] = await Promise.allSettled([resolve(domain, 'A'), resolve(domain, 'AAAA')]);
+
+  const hasARecord = a.status === 'fulfilled' && a.value.answers.some((r) => r.type === 1);
+  const hasAAAARecord = aaaa.status === 'fulfilled' && aaaa.value.answers.some((r) => r.type === 28);
+
+  const saysMissing = (r: PromiseSettledResult<Awaited<ReturnType<Resolver>>>) =>
+    r.status === 'fulfilled' && r.value.status === NXDOMAIN;
+
+  // Fails open: a resolver that did not answer at all leaves `status` null,
+  // which is not NXDOMAIN, so the scan proceeds rather than being refused on
+  // the strength of a network blip.
+  const exists = !(saysMissing(a) && saysMissing(aaaa));
+
+  if (exists) return { exists, hasARecord, hasAAAARecord };
+
+  for (const candidate of variantsFor(domain)) {
+    // A suggestion still has to be a name Klyro would agree to scan.
+    if (!screenName(candidate).ok) continue;
+
+    const probe = await Promise.allSettled([resolve(candidate, 'A')]);
+    const resolves =
+      probe[0].status === 'fulfilled' && probe[0].value.answers.some((r) => r.type === 1);
+
+    if (resolves) return { exists, hasARecord, hasAAAARecord, suggestion: candidate };
+  }
+
+  return { exists, hasARecord, hasAAAARecord };
 }

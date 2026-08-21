@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { PageFooter, Wordmark } from '@/components/Chrome';
+import ThemeToggle from '@/components/ThemeToggle';
 import { comparisonHeadline } from '@/lib/compare';
 import { SEVERITY_COLORS } from '@/lib/constants';
 import { isLegacyFinding } from '@/lib/dataset/history';
@@ -97,12 +98,15 @@ export default function CompareView() {
     <div className="mx-auto w-full max-w-[1180px] px-5 pb-24 pt-8 sm:px-8">
       <header className="flex flex-wrap items-center justify-between gap-4 pb-8">
         <Wordmark />
-        <Link
-          href="/"
-          className="font-mono text-[11px] uppercase tracking-[0.1em] text-tx-3 underline-offset-4 hover:text-tx hover:underline"
-        >
-          New assessment
-        </Link>
+        <div className="flex items-center gap-5">
+          <Link
+            href="/"
+            className="font-mono text-[11px] uppercase tracking-[0.1em] text-tx-3 underline-offset-4 hover:text-tx hover:underline"
+          >
+            New assessment
+          </Link>
+          <ThemeToggle />
+        </div>
       </header>
 
       <section className="panel">
@@ -130,7 +134,7 @@ export default function CompareView() {
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
                 placeholder="acme.com"
-                className="mt-2 w-full border border-line bg-ground px-3 py-2 font-mono text-[13px] text-tx outline-none focus:border-line-strong"
+                className="mt-2 w-full border border-line bg-ground px-3 py-2 font-mono text-[13px] text-tx outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seal-ink  focus:border-line-strong"
               />
             </label>
             <button
@@ -165,7 +169,7 @@ export default function CompareView() {
                         label === 'Later assessment' ? e.target.value : current,
                       );
                     }}
-                    className="mt-2 w-full border border-line bg-ground px-3 py-2 text-[12.5px] text-tx outline-none focus:border-line-strong"
+                    className="mt-2 w-full border border-line bg-ground px-3 py-2 text-[12.5px] text-tx focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seal-ink outline-none focus:border-line-strong"
                   >
                     {data.available.map((run) => (
                       <option key={run.scannedAt} value={run.scannedAt}>

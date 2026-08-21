@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import BenchmarkChart from '@/components/BenchmarkChart';
 import CheckMatrix from '@/components/CheckMatrix';
 import { PageFooter, Wordmark } from '@/components/Chrome';
+import ThemeToggle from '@/components/ThemeToggle';
 import FindingsTable from '@/components/FindingsTable';
 import InventoryPanel from '@/components/InventoryPanel';
 import NewsIntel from '@/components/NewsIntel';
@@ -22,14 +23,27 @@ import TechnologyStack from '@/components/TechnologyStack';
 import { benchmarkSentence } from '@/lib/benchmark';
 import { CATEGORY_LABELS, CATEGORY_ORDER, COLORS, INDUSTRIES, REGIONS, SEVERITY_COLORS } from '@/lib/constants';
 import { parseDomain } from '@/lib/domain';
-import { countBySeverity, prioritise } from '@/lib/scoring';
+import {
+  countBySeverity,
+  coverageCounts,
+  explainLowCoverage,
+  LOW_COVERAGE_THRESHOLD,
+  prioritise,
+} from '@/lib/scoring';
 import type { BenchmarkResult, CategoryResult, ScanEvent, ScanResult } from '@/lib/types';
 import type { NewsIntelligence } from '@/lib/intel/types';
 
-type Phase = 'idle' | 'scanning' | 'done' | 'error';
+/**
+ * `checking` covers the pre-flight window — the seconds between asking and the
+ * server confirming the domain exists. It renders a single line rather than
+ * the module list, so a mistyped domain never gets a progress bar it is not
+ * going to finish.
+ */
+type Phase = 'idle' | 'checking' | 'scanning' | 'done' | 'error' | 'not-found';
 
 export default function ResultsView() {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const domainParam = searchParams.get('domain') ?? '';
   const industryParam = searchParams.get('industry') ?? '';
@@ -54,6 +68,10 @@ export default function ResultsView() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [benchmark, setBenchmark] = useState<BenchmarkResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState<{
+    message: string;
+    suggestion: string | null;
+  } | null>(null);
   /**
    * Set when the assessment was filed somewhere other than the caller asked —
    * personally, because they named an organisation they cannot write to.
@@ -75,8 +93,9 @@ export default function ResultsView() {
   const startedFor = useRef<string | null>(null);
 
   const runScan = useCallback(async () => {
-    setPhase('scanning');
+    setPhase('checking');
     setError(null);
+    setNotFound(null);
     setResult(null);
     setBenchmark(null);
     setContext(contextDomain ? { domain: contextDomain, status: 'running', assessment: null } : null);
@@ -96,7 +115,27 @@ export default function ResultsView() {
       });
 
       if (!response.ok || !response.body) {
-        const payload = await response.json().catch(() => null);
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+          code?: string;
+          suggestion?: string | null;
+        } | null;
+
+        /*
+         * A domain that does not resolve is a different screen from a scan
+         * that failed. The reader mistyped something and needs to see the
+         * name they typed and a way to correct it — not a "try again" button
+         * that would repeat the same lookup with the same answer.
+         */
+        if (response.status === 422 && payload?.code === 'DOMAIN_NOT_FOUND') {
+          setNotFound({
+            message: payload.error ?? `${parsed.domain} does not resolve in DNS.`,
+            suggestion: payload.suggestion ?? null,
+          });
+          setPhase('not-found');
+          return;
+        }
+
         throw new Error(payload?.error ?? 'The assessment could not be started.');
       }
 
@@ -107,6 +146,9 @@ export default function ResultsView() {
       const handle = (event: ScanEvent) => {
         switch (event.type) {
           case 'start':
+            // The stream opening is the proof that pre-flight passed, so this
+            // is the moment the module list earns its place on screen.
+            setPhase('scanning');
             setModules(
               event.modules.map((m) => ({ key: m.key, label: m.label, status: 'pending' as const })),
             );
@@ -242,6 +284,51 @@ export default function ResultsView() {
     );
   }
 
+  /* ---------------- Domain does not resolve ---------------- */
+
+  if (phase === 'not-found' && notFound) {
+    return (
+      <Shell domain={parsed.domain}>
+        <div className="panel mx-auto mt-16 max-w-lg p-8">
+          <p className="micro text-risk-warn">Not found</p>
+          <h1 className="mt-3 text-[22px] font-semibold tracking-tight text-tx">
+            <span className="font-mono">{parsed.domain}</span> does not resolve
+          </h1>
+          <p className="mt-3 text-[13px] leading-relaxed text-tx-2">{notFound.message}</p>
+          <p className="mt-3 text-[12px] leading-relaxed text-tx-3">
+            No assessment was run. Klyro checked for A and AAAA records and found neither, so there
+            is no host here to observe — this is a statement about the name, not about anybody&apos;s
+            security.
+          </p>
+
+          <div className="mt-7 flex flex-wrap gap-3">
+            {notFound.suggestion && (
+              <button
+                type="button"
+                onClick={() => {
+                  const next = new URLSearchParams({
+                    domain: notFound.suggestion as string,
+                    industry: industry as string,
+                    region: region as string,
+                  });
+                  if (contextDomain) next.set('context', contextDomain);
+                  startedFor.current = null;
+                  router.push(`/results?${next.toString()}`);
+                }}
+                className="btn-primary"
+              >
+                Assess <span className="font-mono">{notFound.suggestion}</span> instead
+              </button>
+            )}
+            <Link href="/" className="btn-ghost">
+              New assessment
+            </Link>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+
   /* ---------------- Error ---------------- */
 
   if (phase === 'error') {
@@ -274,6 +361,31 @@ export default function ResultsView() {
   }
 
   /* ---------------- Scanning ---------------- */
+
+  /*
+   * Pre-flight. One line, no module list — the scan has not been accepted yet,
+   * and showing eleven pending rows for a domain that may not exist promises
+   * work that will not happen.
+   */
+  if (phase === 'checking') {
+    return (
+      <Shell domain={parsed.domain}>
+        <div className="mx-auto w-full max-w-3xl py-16">
+          <p className="micro">Checking</p>
+          <h1 className="mt-3 truncate font-mono text-[28px] leading-none tracking-tight text-tx sm:text-[34px]">
+            {parsed.domain}
+          </h1>
+          <p className="mt-5 flex items-center gap-2.5 text-[12.5px] text-tx-2">
+            <span
+              className="h-2.5 w-2.5 shrink-0 animate-spin rounded-full border-2 border-line-strong border-t-tx-2"
+              aria-hidden="true"
+            />
+            Confirming the domain resolves before starting the assessment.
+          </p>
+        </div>
+      </Shell>
+    );
+  }
 
   if (phase !== 'done' || !result) {
     return (
@@ -352,6 +464,7 @@ export default function ResultsView() {
             news={news}
             ownership={ownership}
             relationship={context?.assessment ?? null}
+            variant="compact"
           />
         </div>
       }
@@ -388,6 +501,22 @@ export default function ResultsView() {
 
         <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-14">
           <div>
+            {/* Above the gauge, deliberately. Under this threshold the number
+                below is more a statement about reach than about posture, and a
+                reader who sees the score first has already drawn the wrong
+                conclusion by the time they reach a footnote. */}
+            {result.coverage < LOW_COVERAGE_THRESHOLD && (
+              <div className="mb-6 rounded border border-risk-warn/40 bg-risk-warn/[0.07] p-4">
+                <p className="text-[13px] font-medium text-risk-warn">
+                  Only {Math.round(result.coverage * 100)}% of the assessment could be completed for
+                  this domain.
+                </p>
+                <p className="mt-1.5 max-w-2xl text-[12.5px] leading-relaxed text-tx-2">
+                  {explainLowCoverage(result)}
+                </p>
+              </div>
+            )}
+
             <ScoreMeter
               score={result.compositeScore}
               peerAverage={
@@ -395,13 +524,25 @@ export default function ResultsView() {
               }
             />
 
+            {/* Always visible, not only when low. Ordinary transparency: the
+                reader should never have to work out how much of the domain the
+                number is based on. */}
+            <p className="mt-4 text-[12px] text-tx-3">
+              {coverageCounts(result).assessed} of {coverageCounts(result).total} checks completed
+              {result.coverage < 0.999 && (
+                <> · {Math.round(result.coverage * 100)}% of scoring weight</>
+              )}
+            </p>
+
             <p className="mt-9 max-w-2xl text-[13.5px] leading-relaxed text-tx-2">
               {benchmarkSentence(benchmark, result.compositeScore, result.domain)}
             </p>
 
-            {result.coverage < 0.999 && (
-              <p className="mt-3 max-w-2xl text-[12px] leading-relaxed text-risk-warn">
-                {Math.round(result.coverage * 100)}% of the scoring weight could be assessed.
+            {/* The low-coverage case is handled by the banner above the gauge;
+                this covers the ordinary shortfall that needs stating but not
+                alarming about. */}
+            {result.coverage < 0.999 && result.coverage >= LOW_COVERAGE_THRESHOLD && (
+              <p className="mt-3 max-w-2xl text-[12px] leading-relaxed text-tx-3">
                 Categories whose data sources were unavailable were excluded rather than counted
                 against this domain.
               </p>
@@ -685,7 +826,13 @@ function Shell({
               </>
             )}
           </div>
-          {actions}
+          {/* `shrink-0`: without it a long domain in the left group compresses
+              the controls instead of being truncated itself, which is the other
+              half of how this cluster went missing. */}
+          <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+            {actions}
+            <ThemeToggle />
+          </div>
         </div>
 
         {rail && (
