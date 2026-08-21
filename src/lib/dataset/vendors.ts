@@ -267,6 +267,131 @@ export const VENDOR_SEEDS: VendorSeed[] = [
       source: 'Delivery Hero acquired talabat in 2015 and retains a majority stake', sourceUrl: WIKI('Talabat') } },
   { domain: 'deliveryhero.com', displayName: 'Delivery Hero', industry: 'Food & Beverage', region: 'Global', isParentEntity: true },
   { domain: 'nestle.com', displayName: 'Nestlé', industry: 'Food & Beverage', region: 'Global' },
+
+  /* ------------------------------------------------------------------ *
+   * UAE benchmark depth
+   *
+   * A benchmark pool is deduplicated by domain — one domain, one vote — so a
+   * pool's size is the number of distinct curated vendors in it, and no amount
+   * of re-seeding moves it. These three UAE pools held 4, 2 and 6 against a
+   * threshold of 30, which meant the comparison silently reported
+   * "insufficient data" for the three industries most likely to be asked
+   * about. The entries below close that gap.
+   *
+   * Every domain was checked before being added: it resolves to an A record on
+   * two independent resolvers, and its apex answers an HTTPS request. Names
+   * that returned NXDOMAIN, refused the connection, or presented a certificate
+   * that does not cover the apex were dropped rather than added and left to
+   * fail during seeding — a seed list is only useful if running it is boring.
+   * ------------------------------------------------------------------ */
+
+
+  /* Banking & Finance — UAE */
+  { domain: 'adib.ae', displayName: 'Abu Dhabi Islamic Bank', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'dib.ae', displayName: 'Dubai Islamic Bank', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'cbd.ae', displayName: 'Commercial Bank of Dubai', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'rakbank.ae', displayName: 'RAKBANK', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'nbf.ae', displayName: 'National Bank of Fujairah', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'nbq.ae', displayName: 'National Bank of Umm Al Quwain', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'sib.ae', displayName: 'Sharjah Islamic Bank', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'alhilalbank.ae', displayName: 'Al Hilal Bank', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'wio.io', displayName: 'Wio Bank', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'mubadala.com', displayName: 'Mubadala Investment Company', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'adq.ae', displayName: 'ADQ', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'difc.ae', displayName: 'Dubai International Financial Centre', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'dfm.ae', displayName: 'Dubai Financial Market', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'adx.ae', displayName: 'Abu Dhabi Securities Exchange', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'centralbank.ae', displayName: 'Central Bank of the UAE', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'tabby.ai', displayName: 'Tabby', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'ziina.com', displayName: 'Ziina', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'sarwa.co', displayName: 'Sarwa', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'pyypl.com', displayName: 'Pyypl', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'mamopay.com', displayName: 'Mamo', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'telr.com', displayName: 'Telr', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'network.ae', displayName: 'Network International', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'magnati.com', displayName: 'Magnati', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'alansariexchange.com', displayName: 'Al Ansari Exchange', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'hsbc.ae', displayName: 'HSBC UAE', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'citibank.ae', displayName: 'Citibank UAE', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'huspy.com', displayName: 'Huspy', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'smartcrowd.ae', displayName: 'SmartCrowd', industry: 'Banking & Finance', region: 'UAE' },
+  { domain: 'baraka.io', displayName: 'baraka', industry: 'Banking & Finance', region: 'UAE' },
+
+  /* Technology — UAE */
+  { domain: 'kitopi.com', displayName: 'Kitopi', industry: 'Technology', region: 'UAE' },
+  { domain: 'swvl.com', displayName: 'Swvl', industry: 'Technology', region: 'UAE' },
+  { domain: 'dubizzle.com', displayName: 'Dubizzle', industry: 'Technology', region: 'UAE' },
+  { domain: 'presight.ai', displayName: 'Presight AI', industry: 'Technology', region: 'UAE' },
+  { domain: 'core42.ai', displayName: 'Core42', industry: 'Technology', region: 'UAE' },
+  { domain: 'space42.ai', displayName: 'Space42', industry: 'Technology', region: 'UAE' },
+  { domain: 'bayzat.com', displayName: 'Bayzat', industry: 'Technology', region: 'UAE' },
+  { domain: 'alefeducation.com', displayName: 'Alef Education', industry: 'Technology', region: 'UAE' },
+  { domain: 'cafu.com', displayName: 'CAFU', industry: 'Technology', region: 'UAE' },
+  { domain: 'trukker.com', displayName: 'TruKKer', industry: 'Technology', region: 'UAE' },
+  { domain: 'yap.com', displayName: 'YAP', industry: 'Technology', region: 'UAE' },
+  { domain: 'zbooni.com', displayName: 'Zbooni', industry: 'Technology', region: 'UAE' },
+  { domain: 'tecomgroup.ae', displayName: 'TECOM Group', industry: 'Technology', region: 'UAE' },
+  { domain: 'washmen.com', displayName: 'Washmen', industry: 'Technology', region: 'UAE' },
+  { domain: 'lune.io', displayName: 'Lune', industry: 'Technology', region: 'UAE' },
+  { domain: 'pure-harvest.com', displayName: 'Pure Harvest Smart Farms', industry: 'Technology', region: 'UAE' },
+  { domain: 'shipa.com', displayName: 'Shipa', industry: 'Technology', region: 'UAE' },
+  { domain: 'hala.com', displayName: 'Hala', industry: 'Technology', region: 'UAE' },
+  { domain: 'bespinglobal.com', displayName: 'Bespin Global MEA', industry: 'Technology', region: 'UAE' },
+  { domain: 'edgeglobal.ae', displayName: 'EDGE Group', industry: 'Technology', region: 'UAE' },
+  { domain: 'digitaldubai.ae', displayName: 'Digital Dubai', industry: 'Technology', region: 'UAE' },
+  { domain: 'gbmme.com', displayName: 'Gulf Business Machines', industry: 'Technology', region: 'UAE' },
+  { domain: 'botim.me', displayName: 'Botim', industry: 'Technology', region: 'UAE' },
+  { domain: 'derq.com', displayName: 'Derq', industry: 'Technology', region: 'UAE' },
+  { domain: 'm42.ae', displayName: 'M42', industry: 'Technology', region: 'UAE' },
+  { domain: 'holo.ae', displayName: 'Holo', industry: 'Technology', region: 'UAE' },
+  { domain: 'khazna.com', displayName: 'Khazna Data Centers', industry: 'Technology', region: 'UAE' },
+  { domain: 'smartdubai.ae', displayName: 'Smart Dubai', industry: 'Technology', region: 'UAE' },
+
+  { domain: 'nybl.ai', displayName: 'nybl', industry: 'Technology', region: 'UAE' },
+  { domain: 'qureos.com', displayName: 'Qureos', industry: 'Technology', region: 'UAE' },
+  { domain: 'ogram.co', displayName: 'Ogram', industry: 'Technology', region: 'UAE' },
+  { domain: 'alaan.com', displayName: 'Alaan', industry: 'Technology', region: 'UAE' },
+  { domain: 'wafeq.com', displayName: 'Wafeq', industry: 'Technology', region: 'UAE' },
+  { domain: 'justlife.com', displayName: 'Justlife', industry: 'Technology', region: 'UAE' },
+  { domain: 'rizek.com', displayName: 'Rizek', industry: 'Technology', region: 'UAE' },
+  { domain: 'instashop.com', displayName: 'InstaShop', industry: 'Technology', region: 'UAE' },
+  { domain: 'servicemarket.com', displayName: 'ServiceMarket', industry: 'Technology', region: 'UAE' },
+  { domain: 'tarabut.com', displayName: 'Tarabut', industry: 'Technology', region: 'UAE' },
+  { domain: 'revibe.me', displayName: 'Revibe', industry: 'Technology', region: 'UAE' },
+  { domain: 'lyve.global', displayName: 'Lyve Global', industry: 'Technology', region: 'UAE' },
+  { domain: 'cequens.com', displayName: 'Cequens', industry: 'Technology', region: 'UAE' },
+  /* Retail & E-commerce — UAE */
+  { domain: 'sharafdg.com', displayName: 'Sharaf DG', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'luluhypermarket.com', displayName: 'Lulu Hypermarket', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'centrepointstores.com', displayName: 'Centrepoint', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'maxfashion.com', displayName: 'Max Fashion', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'homecentre.com', displayName: 'Home Centre', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'lifestylestores.com', displayName: 'Lifestyle', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'splashfashions.com', displayName: 'Splash', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'babyshopstores.com', displayName: 'Babyshop', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'emax.ae', displayName: 'Emax', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'jumbo.ae', displayName: 'Jumbo Electronics', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'eros.ae', displayName: 'Eros Group', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'unioncoop.ae', displayName: 'Union Coop', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'choithrams.com', displayName: 'Choithrams', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'spinneys.com', displayName: 'Spinneys', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'almaya.ae', displayName: 'Al Maya Group', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'mumzworld.com', displayName: 'Mumzworld', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'eyewa.com', displayName: 'Eyewa', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: '6thstreet.com', displayName: '6thStreet', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'redtagfashion.com', displayName: 'REDTAG', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'damasjewellery.com', displayName: 'Damas Jewellery', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'malabargoldanddiamonds.com', displayName: 'Malabar Gold & Diamonds', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'puregoldjewellers.com', displayName: 'Pure Gold Jewellers', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'apparelgroup.com', displayName: 'Apparel Group', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'chalhoubgroup.com', displayName: 'Chalhoub Group', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'virginmegastore.ae', displayName: 'Virgin Megastore UAE', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'ace.ae', displayName: 'ACE', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'danubehome.com', displayName: 'Danube Home', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'panemirates.com', displayName: 'Pan Emirates', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'firstcry.ae', displayName: 'FirstCry Arabia', industry: 'Retail & E-commerce', region: 'UAE' },
+  { domain: 'brandsforlessuae.com', displayName: 'Brands For Less', industry: 'Retail & E-commerce', region: 'UAE' },
+
 ];
 
 /** Vendors grouped by industry, for reporting on dataset coverage. */
