@@ -1,6 +1,6 @@
 {
   "name": "klyro",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "private": true,
   "description": "Klyro \u2014 external exposure assessment for enterprise security teams",
   "scripts": {

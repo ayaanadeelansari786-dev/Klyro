@@ -250,6 +250,11 @@ const EXPOSURE_FACTOR: Record<CategoryKey, number> = {
   // wrong first before a technology listing helps anyone.
   technologies: 0.45,
   robotsSecurity: 0.4,
+  // Lower than the same ports observed directly would rate, and deliberately.
+  // The exposure factor asks how directly an outsider can act on the weakness;
+  // here Klyro has not established that the weakness is still present, only
+  // that a third party recorded it at an unknown date.
+  internetdb: 0.55,
 };
 
 const CONFIDENCE_PHRASE: Record<Confidence, string> = {

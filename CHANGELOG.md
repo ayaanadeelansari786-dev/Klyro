@@ -5,6 +5,121 @@ All notable changes to Klyro are recorded here.
 `TOOL_VERSION` in `src/lib/constants.ts` is written onto every stored
 assessment, so a report can always be traced to the version that produced it.
 
+## [1.7.0] — 2026-08-21
+
+### Added
+
+- **Network Exposure**, a twelfth check, reading Shodan's free public
+  InternetDB. It reports the ports, reverse-DNS names and vulnerability
+  identifiers Shodan already holds for the address a domain publishes at its
+  apex. No key, no quota, one HTTPS request, measured at 330–430ms.
+
+#### It is the only module that measures nothing
+
+Every other check reads a public source or connects to the domain itself. This
+one reads a third party's record and reports what it says, and the report is
+built so those two things cannot be confused:
+
+- Every finding states in its evidence that **Klyro did not connect** to any of
+  these ports and performed no scan of the address.
+- **No finding is rated at high confidence.** InternetDB publishes no crawl
+  date for a record, so an entry may be from this morning or from years ago and
+  the API gives no way to tell. That is a stated limitation, which is what the
+  medium level means. The attributed-CVE finding is rated *low* confidence:
+  those identifiers are inferred by a third party from a service banner, not
+  from a test, and Klyro verifies none of them.
+- Its exposure factor in the ranking formula is 0.55, below what the same ports
+  observed directly would earn, because Klyro has not established that the
+  weakness is still present.
+- `/scanner` gains a section naming the one request that goes to Shodan rather
+  than to the operator, and `/methodology` names this module as the exception
+  to its own provenance claim rather than leaving the claim overstated.
+
+#### Two decisions that keep it usable
+
+- **Ports every host answers on are not flagged.** 80, 443, 53, the mail ports,
+  and Cloudflare's 2052–2096 / 8443 / 8880 block are treated as expected.
+  Without that, cloudflare.com alone produces nine findings — its record lists
+  ten ports — and every Cloudflare-fronted domain in the corpus would carry an
+  identical page of noise. With it, that scan produces one.
+- **Only host names inside the assessed domain are named.** InternetDB returns
+  every name whose reverse DNS points at an address, and on a shared address
+  most belong to strangers: 1.1.1.1 comes back with a school district and a
+  university, 8.8.8.8 with an unrelated marketing host. Listing those under a
+  vendor's assessment would tell the reader nothing about that vendor and would
+  print somebody else's internal-looking host names into a document about a
+  third party. Names outside the domain are counted — the count is how you tell
+  a dedicated address from a shared one — and nothing more is said about them.
+
+#### Caching and the hourly ceiling
+
+Shodan's record is cached in memory for an hour, keyed by address, and each
+address is allowed 100 lookups an hour as a backstop. Two things about that are
+worth writing down.
+
+**The cache holds the raw record, not the finished findings.** Caching the
+findings by address is the obvious version and it is wrong in a way that would
+be hard to notice: the findings depend on the domain as well as the address —
+which host names belong to the assessed domain and which belong to strangers —
+and a CDN address serves hundreds of domains. Cache findings by address and the
+second domain on a shared address inherits the first one's host-name split, so
+one customer's report names another customer's hosts. What genuinely is a
+property of the address is Shodan's record, so that is what is stored.
+`tests/internetdb.test.ts` scores two domains on one address and asserts
+neither report contains the other's names.
+
+**An error is never cached.** A record and a "no record" are stable statements
+about an address and hold for an hour; a 502 is a statement about Shodan at
+that instant, and caching it would take the module out for an hour on the
+strength of one bad second.
+
+The ceiling's window is real — it resets an hour after it opens. It is also
+honestly a backstop rather than a rate limiter: it is keyed by target address,
+so a scan of a hundred different domains is a hundred different keys, and with
+the cache in front of it reaching 100 for one address needs 100 cache misses in
+an hour. Both maps are bounded at 500 entries. In-memory means per-instance and
+per-deploy on Vercel, which is fine for what this is protecting against.
+
+#### Scoring
+
+Weight 0.08, with the eleven existing weights multiplied by 0.92 so the set
+still sums to 1.0, written out as explicit constants. Category score is 100
+less 25 per data-store port, 15 per remote-access port, 10 per administrative
+web surface and 20 for a non-empty vulnerability list, floored at 0.
+
+Host names carry **no** penalty, which departs from the brief. A name inside
+the assessed domain resolving to its own address is the ordinary shape of a
+website, and where such a name is worth flagging the Subdomain Exposure module
+already finds it from certificate transparency, tiers it and scores it —
+penalising it here would charge one asset to two categories. A name belonging
+to somebody else on a shared address is not the assessed domain's doing at all.
+
+### Fixed
+
+- The cached lookup briefly called itself instead of the transport, and the
+  module went on calling the uncached path — an infinite recursion that
+  typechecked cleanly and that no test would have reached, because the module
+  was still bypassing it. Caught by reading the call sites after the edit
+  rather than by the suite.
+- A domain absent from Shodan's index would have scored 0 at full weight.
+  `computeComposite` filters on a category's `status` and never reads
+  `moduleCoverage`, so returning a low coverage does not drop a module from the
+  composite — it contributes its score at full weight anyway. The three
+  no-data paths now throw, which produces a genuine `unavailable` category and
+  renormalises the remaining weights. Caught by rewriting the tests to assert
+  the composite that comes out rather than the field going in; the first
+  version of those tests checked `moduleCoverage === 0` and passed while the
+  bug was live.
+
+### Notes
+
+- Klyro sends one request per scan to `internetdb.shodan.io` carrying only the
+  IP address. Blocking Klyro does not remove an address from Shodan, which runs
+  its own scanners and publishes its own opt-out.
+- The self-performed TCP port module remains withdrawn. This does not revive
+  it: reading a public record is not the same act as opening a connection, and
+  the disclosure keeps the two apart.
+
 ## [1.6.0] — 2026-08-21
 
 ### Added

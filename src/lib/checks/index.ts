@@ -13,6 +13,7 @@ import { checkCookies } from './cookies';
 import { checkCors } from './cors';
 import { checkRobotsSecurity } from './robots-sitemap';
 import { checkTechnologies } from './technologies';
+import { checkInternetDB } from './internetdb';
 
 export type CheckFn = (domain: string) => Promise<ModuleOutput>;
 
@@ -28,6 +29,7 @@ export const CHECKS: Record<CategoryKey, CheckFn> = {
   cors: checkCors,
   robotsSecurity: checkRobotsSecurity,
   technologies: checkTechnologies,
+  internetdb: checkInternetDB,
 };
 
 /** Execution order used by the progress UI — most material checks first. */
@@ -47,6 +49,9 @@ const MODULE_TIMEOUTS: Partial<Record<CategoryKey, number>> = {
   ssl: 20_000,
   exposedPaths: 22_000,
   technologies: 16_000,
+  // One DNS lookup plus one HTTPS request to a fast API — measured at well
+  // under a second. 10s is headroom for a slow resolver, not an expectation.
+  internetdb: 10_000,
 };
 
 export function timeoutFor(key: CategoryKey): number {
@@ -70,4 +75,5 @@ export {
   checkCors,
   checkRobotsSecurity,
   checkTechnologies,
+  checkInternetDB,
 };

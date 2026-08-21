@@ -1,6 +1,6 @@
 import type { CategoryKey } from './types';
 
-export const TOOL_VERSION = '1.6.0';
+export const TOOL_VERSION = '1.7.0';
 
 export const INDUSTRIES = [
   'Banking & Finance',
@@ -38,18 +38,24 @@ export type Region = (typeof REGIONS)[number];
  * it. That is stated rather than hidden: `toolVersion` is recorded on every
  * assessment, and the comparison view reads it.
  */
+/*
+ * The eleven original weights multiplied by 0.92, plus 0.08 for the twelfth.
+ * Written out rather than computed so the table can be read and checked; the
+ * set sums to 1.0 and `tests/vault-dial.test.ts` asserts that it still does.
+ */
 export const CATEGORY_WEIGHTS: Record<CategoryKey, number> = {
-  dns: 0.1,
-  subdomains: 0.12,
-  ssl: 0.13,
-  headers: 0.12,
-  emailSecurity: 0.13,
-  whois: 0.06,
-  exposedPaths: 0.1,
-  cookies: 0.05,
-  cors: 0.05,
-  robotsSecurity: 0.04,
-  technologies: 0.1,
+  dns: 0.092,
+  subdomains: 0.1104,
+  ssl: 0.1196,
+  headers: 0.1104,
+  emailSecurity: 0.1196,
+  whois: 0.0552,
+  exposedPaths: 0.092,
+  cookies: 0.046,
+  cors: 0.046,
+  robotsSecurity: 0.0368,
+  technologies: 0.092,
+  internetdb: 0.08,
 };
 
 export const CATEGORY_LABELS: Record<CategoryKey, string> = {
@@ -64,6 +70,7 @@ export const CATEGORY_LABELS: Record<CategoryKey, string> = {
   cors: 'CORS Policy',
   robotsSecurity: 'Robots & Security.txt',
   technologies: 'Technology Profile',
+  internetdb: 'Network Exposure',
 };
 
 /**
@@ -88,6 +95,8 @@ export const CATEGORY_BLURBS: Record<CategoryKey, string> = {
   cors: 'Which other websites the site permits to read its responses.',
   robotsSecurity: 'Public metadata files that either help researchers report issues or reveal internals.',
   technologies: 'The software the site declares it runs on, and the outside companies whose code it loads.',
+  internetdb:
+    'What a public internet-wide scanning database already records about the domain’s address.',
 };
 
 export const CATEGORY_ORDER: CategoryKey[] = [
@@ -105,6 +114,11 @@ export const CATEGORY_ORDER: CategoryKey[] = [
   // modules have already fetched, so running it late keeps its request off the
   // front of the scan where the wall-clock budget is tightest.
   'technologies',
+  // Last, and the only module that measures nothing: it reads a third party's
+  // record rather than the domain. Placing it at the end keeps the reader's
+  // path through the report going from what Klyro observed to what somebody
+  // else observed, which is the order the two deserve.
+  'internetdb',
 ];
 
 /** Shorter labels for the radar chart, which has very little room per axis. */
@@ -120,6 +134,7 @@ export const CATEGORY_SHORT_LABELS: Record<CategoryKey, string> = {
   cors: 'CORS',
   robotsSecurity: 'Robots',
   technologies: 'Technology',
+  internetdb: 'Exposure',
 };
 
 /**

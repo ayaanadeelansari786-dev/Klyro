@@ -16,7 +16,8 @@ export type CategoryKey =
   | 'cookies'
   | 'cors'
   | 'robotsSecurity'
-  | 'technologies';
+  | 'technologies'
+  | 'internetdb';
 
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 

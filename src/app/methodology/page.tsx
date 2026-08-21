@@ -158,6 +158,10 @@ const SOURCES: Record<
     source: 'Direct requests for /robots.txt, /sitemap.xml and /.well-known/security.txt',
     confirmed: 'Single observation — the file is served or it is not',
   },
+  internetdb: {
+    source: 'Shodan InternetDB — a third-party record, not a Klyro measurement',
+    confirmed: 'Not corroborated, and not measured — see the note below the table',
+  },
   technologies: {
     source: 'The homepage response — title, headers, asset paths, cookie names — plus the domain’s own DNS records',
     confirmed: 'Corroborated where a second signal exists; a single weak signal is reported at lower confidence',
@@ -391,10 +395,10 @@ export default function MethodologyPage() {
 
         <Section id="sources" eyebrow="Provenance" title="Where the data comes from">
           <p>
-            Every module reads a public source or the domain itself. There is no proprietary feed,
-            no purchased dataset, and no cached third-party opinion in any of it — which is the
-            reason a Klyro finding is current at the moment it is produced rather than as of
-            whenever someone else last crawled.
+            Eleven of the twelve modules read a public source or the domain itself, at the moment
+            you ask. Nothing is bought, and nothing is served from a cache of somebody else&rsquo;s
+            crawl — which is why a Klyro finding is current when it is produced rather than as of
+            whenever a third party last looked.
           </p>
           <p>
             The right-hand column matters more than it looks. Where a finding asserts that something
@@ -415,6 +419,18 @@ export default function MethodologyPage() {
             ])}
           />
 
+          <p>
+            <span className="font-medium text-tx">Network Exposure is the exception</span>, and it
+            is worth stating plainly rather than burying in the table. That module measures nothing:
+            it reads Shodan&rsquo;s InternetDB, a free public summary of what Shodan&rsquo;s own
+            crawlers have seen on an address, and reports what that database holds. Klyro opens no
+            connection to any port on the target and performs no scan of it. InternetDB publishes no
+            crawl date for a record, so the age of an entry is unknown and unknowable from the API —
+            an observation could be from this morning or from two years ago. Every finding the module
+            produces says so, none is rated at high confidence, and its findings ask the reader to
+            confirm against their own inventory rather than to act on the record. It is enrichment,
+            not measurement, and the report does not blur the two.
+          </p>
           <p>
             Two context panels draw on sources outside the scored modules: recent public reporting
             on the organisation, via the Google News RSS feed, and the operator behind each address

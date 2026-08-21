@@ -108,7 +108,10 @@ export default function ScannerPage() {
         <dl className="grid grid-cols-1 border-t border-line sm:grid-cols-3">
           {[
             ['Trigger', 'A person submitting the domain. Nothing is scheduled or recurring.'],
-            ['Method', 'Standard HTTP requests to published endpoints. No port scanning.'],
+            [
+              'Method',
+              'Standard HTTP requests to published endpoints. No port scanning — Klyro opens no connection to any port other than 80 and 443.',
+            ],
             ['Ceiling', `${RATE_LIMIT_MAX} scans per hour per source, enforced server-side.`],
           ].map(([term, detail], i) => (
             <div
@@ -224,12 +227,52 @@ export default function ScannerPage() {
           </div>
         </div>
 
+        {/*
+         * The one lookup that is about the operator's address but is not sent
+         * to it.
+         *
+         * This page exists to answer "what did this thing do to my server",
+         * and the honest answer for this module is "nothing" — but an operator
+         * reading a Klyro report will see port numbers in it, and being told
+         * where those came from belongs here rather than only on the
+         * methodology page.
+         */}
+        <Section id="thirdparty" eyebrow="Third-party lookups" title="One request that is not to you">
+          <p>
+            Klyro sends one request per scan to{' '}
+            <span className="font-mono text-[12.5px] text-tx">internetdb.shodan.io</span>, a free
+            public API from Shodan, asking what it already holds about the address your domain
+            resolves to. That request goes to Shodan, not to you, and it carries nothing but the IP
+            address.
+          </p>
+          <p>
+            It matters here because the report that comes out may list open ports, and those port
+            numbers are Shodan&rsquo;s observations rather than Klyro&rsquo;s. Klyro does not connect
+            to them and does not verify them. Shodan publishes no crawl date for a record, so the
+            findings state that the age of the observation is unknown, and none of them is rated at
+            high confidence.
+          </p>
+          <p>
+            Blocking Klyro will not remove your address from Shodan, because Klyro is not what put it
+            there. Shodan operates its own scanners and publishes{' '}
+            <Link
+              href="https://www.shodan.io/"
+              className="text-seal-ink underline underline-offset-2"
+              rel="noreferrer noopener"
+              target="_blank"
+            >
+              its own opt-out
+            </Link>
+            .
+          </p>
+        </Section>
+
         <Section id="never" eyebrow="Boundaries" title="What Klyro does not do">
           <ul className="!mt-5 space-y-2.5">
             {[
               'No credentials are ever submitted. No login is attempted, no password is guessed, and no session is established.',
               'No payloads are sent. Nothing is injected, fuzzed, or malformed, and no vulnerability is triggered or confirmed by exploitation.',
-              'No port scanning. Only HTTP and HTTPS on their standard ports, to host names the domain itself has published.',
+              'No port scanning. Only HTTP and HTTPS on their standard ports, to host names the domain itself has published. Where a report lists other ports, they come from Shodan’s public database — described above — and Klyro has not connected to them.',
               'No enumeration. The path list above is fixed and short; directories are not brute forced and host names are not guessed.',
               'No state is changed. Every request is a read. Nothing is created, modified or deleted, and nothing is uploaded.',
               'No authenticated or internal surface is touched. Klyro sees only what any anonymous visitor sees.',

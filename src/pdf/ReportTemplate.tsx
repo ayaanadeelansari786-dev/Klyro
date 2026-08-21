@@ -21,6 +21,9 @@ import {
   TOOL_VERSION,
 } from '@/lib/constants';
 import { benchmarkSentence, ordinal } from '@/lib/benchmark';
+// Service names come from the module that owns the port tables, so the page
+// and the finding cannot disagree. Server-only, like the rest of this file.
+import { serviceFor as exposureServiceFor } from '@/lib/checks/internetdb';
 import {
   coverageCounts,
   executiveHighlights,
@@ -711,6 +714,32 @@ export function ReportTemplate({
   const technologyProfile =
     result.categories.find((c) => c.key === 'technologies')?.payload?.technologyProfile ?? null;
 
+  /*
+   * Network exposure, read from the module's own facts.
+   *
+   * Printed whenever the module ran, including when it found nothing — a clean
+   * record is reassuring, and a section that vanishes teaches the reader that
+   * its absence means "not checked". Omitted only when the category is
+   * `unavailable`, which here means Shodan held no record at all and there is
+   * genuinely nothing to show.
+   */
+  const exposureCategory = result.categories.find((c) => c.key === 'internetdb');
+  const exposure =
+    exposureCategory && exposureCategory.status === 'assessed'
+      ? (exposureCategory.facts as
+          | {
+              address?: string;
+              ports?: number[];
+              notablePorts?: number[];
+              criticalPorts?: number[];
+              hostnamesInDomain?: string[];
+              hostnamesElsewhere?: number;
+              vulns?: string[];
+            }
+          | undefined)
+      : undefined;
+  const exposureShown = Boolean(exposure?.address);
+
 
   // Only the top two tiers reach the PDF. The dashboard carries every host;
   // a printed report listing eighty is a directory, not an assessment.
@@ -723,6 +752,7 @@ export function ReportTemplate({
     'breakdown',
     ...(subdomains.length > 0 ? ['subdomains'] : []),
     ...(technologyProfile ? ['technology'] : []),
+    ...(exposureShown ? ['exposure'] : []),
     'benchmark',
     'findings',
     ...(result.inventory ? ['inventory'] : []),
@@ -1516,6 +1546,127 @@ export function ReportTemplate({
             <Text style={{ fontSize: 8.5, lineHeight: 1.5, color: C.slate }}>
               <Text style={{ fontFamily: 'Helvetica-Bold', color: C.navy }}>Limits: </Text>
               {technologyProfile.limits.join(' ')}
+            </Text>
+          </View>
+        </Page>
+      )}
+
+      {/* ---------------- Network Exposure ---------------- */}
+      {exposureShown && exposure && (
+        <Page size="A4" style={s.page}>
+          <Header domain={result.domain} title="Network Exposure" />
+
+          <Text style={s.eyebrow}>SECTION {sectionNo('exposure')}</Text>
+          <Text style={{ ...s.h1, fontSize: 16 }}>Network Exposure</Text>
+          <Text style={s.body}>
+            This is the one section of the report where Klyro did not do the measuring. It reports
+            what Shodan&rsquo;s public InternetDB already records about {exposure.address}, the
+            address {result.domain} publishes at its apex. Klyro opened no connection to any of
+            these ports and performed no scan of this address.
+          </Text>
+
+          <View style={{ ...s.panel, marginTop: 12, borderLeftWidth: 3, borderLeftColor: C.cyan }}>
+            <Text style={{ fontSize: 8.5, lineHeight: 1.5, color: C.slate }}>
+              <Text style={{ fontFamily: 'Helvetica-Bold', color: C.navy }}>Age unknown. </Text>
+              InternetDB publishes no crawl date for a record, so an entry below may be from this
+              morning or from years ago, and the API gives no way to tell. This is a list to check
+              against the operator&rsquo;s own inventory, not a statement about what is open now.
+            </Text>
+          </View>
+
+          {(exposure.notablePorts?.length ?? 0) === 0 ? (
+            <View style={{ ...s.panel, marginTop: 12, borderLeftWidth: 3, borderLeftColor: C.good }}>
+              <Text style={{ ...s.h2, marginTop: 0 }}>
+                No sensitive ports were found in Shodan&rsquo;s record for this address
+              </Text>
+              <Text style={{ fontSize: 9, lineHeight: 1.55, color: C.slate, marginTop: 4 }}>
+                {(exposure.ports?.length ?? 0) > 0
+                  ? 'Shodan holds a record listing ports ' +
+                    (exposure.ports ?? []).join(', ') +
+                    ', none of which is a data store, a remote-access service, or an administrative surface.'
+                  : 'Shodan holds a record for this address and lists no open ports against it.'}
+              </Text>
+            </View>
+          ) : (
+            <View style={{ marginTop: 12 }}>
+              <Text style={s.h2}>Ports on record</Text>
+              {(exposure.notablePorts ?? []).map((port) => {
+                const critical = (exposure.criticalPorts ?? []).includes(port);
+                const service = exposureServiceFor(port);
+                return (
+                  <View
+                    key={port}
+                    style={{
+                      ...s.panel,
+                      marginTop: 6,
+                      borderLeftWidth: 3,
+                      borderLeftColor: critical ? C.bad : C.warn,
+                    }}
+                  >
+                    <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 10, color: C.navy }}>
+                      {port}
+                      {service ? ' — ' + service : ''}
+                    </Text>
+                    <Text style={{ fontSize: 8.5, lineHeight: 1.5, color: C.slate, marginTop: 3 }}>
+                      {critical
+                        ? 'Conventionally a data store. Normally reached by an application server on a private network rather than directly from the internet.'
+                        : 'Conventionally remote access or administration. Subject to continuous automated credential guessing wherever it is reachable.'}
+                    </Text>
+                  </View>
+                );
+              })}
+              <Text style={{ fontSize: 8.5, lineHeight: 1.5, color: C.muted, marginTop: 6 }}>
+                Full list Shodan holds: {(exposure.ports ?? []).join(', ')}
+              </Text>
+            </View>
+          )}
+
+          {(exposure.vulns?.length ?? 0) > 0 && (
+            <View style={{ ...s.panel, marginTop: 12, borderLeftWidth: 3, borderLeftColor: C.warn }}>
+              <Text style={{ ...s.h2, marginTop: 0 }}>
+                Vulnerability identifiers attributed by Shodan
+              </Text>
+              <Text style={{ fontFamily: 'Courier', fontSize: 8, color: C.slate, marginTop: 4 }}>
+                {(exposure.vulns ?? []).slice(0, 20).join('  ')}
+              </Text>
+              <Text style={{ fontSize: 8.5, lineHeight: 1.5, color: C.slate, marginTop: 5 }}>
+                Shodan attributes these to this address, generally by matching a version string a
+                service advertised against a vulnerability database. That is an inference from a
+                banner, not a test. Klyro has verified none of them and does not rank or endorse the
+                list. Each identifier should be put to whoever runs the service and matched against
+                the software and version actually deployed there.
+              </Text>
+            </View>
+          )}
+
+          <View style={{ marginTop: 12 }}>
+            <Text style={s.h2}>Host names on this address</Text>
+            <Text style={{ fontSize: 9, lineHeight: 1.55, color: C.slate, marginTop: 3 }}>
+              {(exposure.hostnamesInDomain?.length ?? 0) > 0
+                ? (exposure.hostnamesInDomain ?? []).length +
+                  ' name(s) within ' +
+                  result.domain +
+                  ': ' +
+                  (exposure.hostnamesInDomain ?? []).slice(0, 8).join(', ') +
+                  '.'
+                : 'No host names within ' +
+                  result.domain +
+                  " appear in Shodan's reverse-DNS record for this address."}
+              {(exposure.hostnamesElsewhere ?? 0) > 0
+                ? ' A further ' +
+                  exposure.hostnamesElsewhere +
+                  ' name(s) outside this domain resolve to the same address; they belong to other parties and are counted rather than listed.'
+                : ''}
+            </Text>
+          </View>
+
+          <View style={{ ...s.panel, marginTop: 12 }}>
+            <Text style={{ fontSize: 8.5, lineHeight: 1.5, color: C.slate }}>
+              <Text style={{ fontFamily: 'Helvetica-Bold', color: C.navy }}>Limits: </Text>
+              Everything on this page is a third party&rsquo;s observation of unknown age. It does
+              not establish what software is behind a port, whether a port requires authentication,
+              or whether it is reachable today. Only the apex address was looked up. A clean record
+              is not proof that nothing is open &mdash; Shodan may simply not have scanned a port.
             </Text>
           </View>
         </Page>

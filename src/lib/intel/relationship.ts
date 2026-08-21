@@ -106,6 +106,11 @@ const GAP_COPY: Record<CategoryKey, { consequence: string; ask: string }> = {
       'Their public site loads code from more outside companies than yours does, or publishes more about the software it runs. Anyone who can change what one of those suppliers serves can change what runs for your staff while they are using their product.',
     ask: 'Ask which third-party scripts run on pages your staff authenticate through, and whether they enforce Subresource Integrity or a script-src policy on them.',
   },
+  internetdb: {
+    consequence:
+      'A public scanning database already lists more of their infrastructure than it does yours. Anyone selecting targets starts from exactly this kind of index, and it costs them nothing to read.',
+    ask: 'Ask them to confirm from their own inventory whether the recorded ports are still open, and to say what closed them if they are not.',
+  },
 };
 
 /* ------------------------------------------------------------------ *
