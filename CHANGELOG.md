@@ -5,6 +5,99 @@ All notable changes to Klyro are recorded here.
 `TOOL_VERSION` in `src/lib/constants.ts` is written onto every stored
 assessment, so a report can always be traced to the version that produced it.
 
+## [1.8.0] — 2026-08-21
+
+### Added
+
+- Three starting legal documents — Terms of Service, Privacy Policy, and
+  Acceptable Use Policy — served as static files at `public/legal/`, so they
+  are reachable at `/legal/TERMS_OF_SERVICE.md`, `/legal/PRIVACY_POLICY.md`
+  and `/legal/ACCEPTABLE_USE_POLICY.md`. Linked from the footer on every page
+  and from a new section on `/methodology`. **These are drafts for legal
+  review, not documents to publish as-is** — every file carries that status in
+  its own first line, and `tests/legal-docs.test.ts` asserts the banner is
+  still there.
+- All three documents cross-link the other two by their served path;
+  `tests/legal-docs.test.ts` asserts each of the three references the other
+  two, so a rename does not quietly break an internal link the way it would
+  in prose nobody re-reads.
+
+### Corrected against what the product actually does
+
+The brief this was built from assumed several things about the system that
+are not accurate, and copying them into a document meant to state facts would
+have made it wrong on day one:
+
+- **Anonymous scans are not stored at all.** `assessments` rows require an
+  owning user or organisation; a scan run without signing in streams its
+  result to the browser and leaves nothing in the database. The brief's "scans
+  are stored indefinitely" is true only of signed-in scans, and only those are
+  described that way.
+- **The rate-limit window is roughly one hour, not seven days.** `RATE_LIMIT_
+  WINDOW_MS` is 3,600,000ms; an IP address is not retained in any separate log
+  beyond that window.
+- **A live user's scan does not currently feed the benchmark pool.**
+  `insertBenchmarkSample` is called only from the admin seeding endpoint. The
+  `benchmark_opt_in` column exists and defaults to off, but no live scan path
+  reads it yet. The Privacy Policy describes this as a dormant, off-by-default
+  capability rather than an active one — stating it as active would have been
+  wrong the moment someone checked.
+- **Accounts genuinely exist and hold an email and a password**, via Supabase
+  Auth, in a schema Klyro's own application code cannot read. The brief's "we
+  do not store email addresses" is false for signed-in users and is not
+  repeated here.
+- **No analytics vendor is integrated.** The brief assumed Vercel Analytics;
+  it is not in `package.json`. The Privacy Policy says plainly that none is
+  currently used, and commits to naming one if that changes, rather than
+  describing a vendor that was never wired in.
+- **No self-service data-deletion control exists in the product.** Access and
+  deletion requests are described as handled by contact, because that is what
+  is actually built; the brief implied a self-service flow.
+- **The Network Exposure check's own boundary is stated precisely**,
+  consistent with `/scanner` and `/methodology`: Klyro does not connect to any
+  port that check reports on. It reads a third party's (Shodan's) prior,
+  undated record and says so in the Terms rather than folding it into "passive
+  Shodan queries" as if it were the same category of action as the other
+  eleven checks.
+
+### Fixed, before first publish
+
+Four follow-up corrections, made before any of this was committed or
+deployed:
+
+- The Privacy Policy's "Report contents" bullet described what a stored
+  assessment contains without restating, in that bullet, that an anonymous
+  scan is never stored at all — true elsewhere in the document, but a reader
+  who only reads that one bullet would not have seen it. It now says so
+  locally.
+- The Privacy Policy never claimed benchmark population from live scans as an
+  active use, correctly, since no code path does that yet — but it also never
+  said so. Silence and "not yet active" read the same to a reader scanning a
+  bullet list; the document now states the inactive status explicitly rather
+  than leaving it to be inferred from an absence.
+- The Terms of Service's Data Handling summary described where a scan itself
+  is or is not stored but never mentioned an account's own email address. It
+  now states plainly that an email is retained only for account holders, and
+  that credentials and confidential data from a scanned domain are not
+  stored — a fact the Privacy Policy already carried, brought into the
+  Terms' own summary rather than left implicit in a cross-reference.
+- The Network Exposure (Shodan) item already stated the record carries no
+  published date and is never presented at direct-observation confidence; it
+  now also says the concrete, lay-reader version of that — the record may be
+  weeks or months old and should not be relied on as current — rather than
+  requiring the reader to draw that conclusion themselves.
+
+### Notes for operators
+
+- Every bracketed placeholder — organisation legal name, governing
+  jurisdiction, dispute venue, and a dedicated privacy/legal contact address —
+  is a genuine business or legal decision this session could not make. The
+  scanner's existing abuse contact (`abuse@klyro.security`) is referenced as
+  the only real address configured in the product today; it is not proposed
+  as the permanent legal contact.
+- A lawyer has not reviewed these documents. They are a complete, internally
+  consistent starting point, not a substitute for that review.
+
 ## [1.7.0] — 2026-08-21
 
 ### Added

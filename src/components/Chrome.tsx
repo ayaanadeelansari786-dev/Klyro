@@ -88,6 +88,31 @@ export function PageFooter({ children }: { children?: React.ReactNode }) {
               Methodology
             </Link>
           </div>
+          {/*
+           * Legal. Plain `<a>`, not `Link` — these are static files served from
+           * `public/legal/`, not app routes, and `Link`'s prefetch assumes the
+           * href resolves to an RSC payload rather than a flat asset.
+           */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            <a
+              href="/legal/TERMS_OF_SERVICE.md"
+              className="text-[11.5px] text-tx-3 transition-colors duration-150 hover:text-tx-2"
+            >
+              Terms of Service
+            </a>
+            <a
+              href="/legal/PRIVACY_POLICY.md"
+              className="text-[11.5px] text-tx-3 transition-colors duration-150 hover:text-tx-2"
+            >
+              Privacy Policy
+            </a>
+            <a
+              href="/legal/ACCEPTABLE_USE_POLICY.md"
+              className="text-[11.5px] text-tx-3 transition-colors duration-150 hover:text-tx-2"
+            >
+              Acceptable Use Policy
+            </a>
+          </div>
         </div>
         <p className="max-w-xl text-[11.5px] leading-relaxed text-tx-3">
           {children ??

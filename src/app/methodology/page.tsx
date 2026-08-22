@@ -538,6 +538,30 @@ export default function MethodologyPage() {
             checking is worth more than a broad one that does not.
           </p>
         </Section>
+
+        <Section id="legal" eyebrow="Terms" title="The documents governing use of Klyro">
+          <p>
+            The methodology above describes what Klyro measures and how. These three documents
+            describe the terms under which the Service is offered, what data is collected while you
+            use it, and what use of it is not permitted.
+          </p>
+          <ul className="!mt-5 space-y-2.5">
+            {[
+              ['Terms of Service', '/legal/TERMS_OF_SERVICE.md'],
+              ['Privacy Policy', '/legal/PRIVACY_POLICY.md'],
+              ['Acceptable Use Policy', '/legal/ACCEPTABLE_USE_POLICY.md'],
+            ].map(([label, href]) => (
+              <li key={href}>
+                <a
+                  href={href}
+                  className="text-[13.5px] text-seal-ink underline underline-offset-2"
+                >
+                  {label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Section>
       </div>
 
       <PageFooter />
