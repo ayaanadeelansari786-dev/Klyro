@@ -57,8 +57,14 @@ export default function FindingDetail({ finding }: { finding: Finding }) {
           {evidence.expected && <EvidenceRow label="Expected value" value={evidence.expected} mono />}
           <EvidenceRow label="Verification" value={evidence.verification} />
           <EvidenceRow label="Confidence basis" value={CONFIDENCE_NOTE[finding.confidence]} />
+          {/*
+           * The quietest line in the finding, deliberately. Everything above
+           * it is what Klyro can stand behind; this is a caveat about the
+           * test itself, and reads that way — dimmer and in the tertiary
+           * ink, where the rest of the evidence sits in secondary.
+           */}
           {evidence.limitation && (
-            <EvidenceRow label="What this cannot establish" value={evidence.limitation} />
+            <EvidenceRow label="What this cannot establish" value={evidence.limitation} quiet />
           )}
           {typeof finding.scoreImpact === 'number' && finding.scoreImpact > 0 && (
             <EvidenceRow
@@ -111,17 +117,20 @@ function EvidenceRow({
   label,
   value,
   mono = false,
+  quiet = false,
 }: {
   label: string;
   value: string;
   mono?: boolean;
+  /** The caveat register — tertiary ink, no emphasis. */
+  quiet?: boolean;
 }) {
   return (
     <div className="grid gap-1 sm:grid-cols-[190px_1fr] sm:gap-4">
       <dt className="text-[11.5px] leading-relaxed text-tx-3">{label}</dt>
       <dd
-        className={`text-[11.5px] leading-relaxed text-tx-2 ${
-          mono ? 'break-all font-mono' : ''
+        className={`text-[11.5px] leading-relaxed ${quiet ? 'italic text-tx-3' : 'text-tx-2'} ${
+          mono ? 'break-all font-mono not-italic' : ''
         }`}
       >
         {value}

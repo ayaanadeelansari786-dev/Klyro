@@ -10,6 +10,7 @@ import HowItWorks from '@/components/home/HowItWorks';
 import ScoreBands from '@/components/home/ScoreBands';
 import SignalBand from '@/components/home/SignalBand';
 import StickyBar from '@/components/home/StickyBar';
+import ValidationStrip from '@/components/home/ValidationStrip';
 
 /**
  * The measure, shared by every section.
@@ -59,6 +60,7 @@ export default function HomePage() {
 
         <ScoreBands />
         <Boundary />
+        <ValidationStrip />
         <ClosingCTA />
         <PageFooter />
       </div>

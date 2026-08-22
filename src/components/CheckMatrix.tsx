@@ -10,7 +10,7 @@ import {
   SEVERITY_COLORS,
 } from '@/lib/constants';
 import { ratingFor, riskColorFor } from '@/lib/scoring';
-import type { CategoryResult, Severity } from '@/lib/types';
+import type { CategoryResult, Finding, Severity } from '@/lib/types';
 
 const TONE_COLORS = {
   good: COLORS.good,
@@ -40,11 +40,24 @@ interface Row {
   effectiveWeight: number;
   worst: Severity | null;
   materialCount: number;
+  /** The finding behind `worst` — what the expanded treatment surfaces inline. */
+  topFinding: Finding | null;
 }
 
 /**
- * All ten checks on one screen, ordered by how much damage each is actually
- * doing rather than by category name.
+ * Below this, a row earns the expanded treatment: larger, with its worst
+ * finding surfaced inline rather than left for a click. A check sitting at
+ * 100 is reassuring but has nothing left to say; a check sitting at 32 is the
+ * thing the reader came here to find, and a uniform row height was making the
+ * two compete for exactly the same amount of attention. Matches
+ * `riskColorFor`'s own "good" cut, so this line never disagrees with the
+ * colour the row is already drawn in.
+ */
+const EXPAND_BELOW = 80;
+
+/**
+ * All twelve checks on one screen, ordered by how much damage each is
+ * actually doing rather than by category name.
  *
  * "Threat" is measured as points lost from the composite: the check's
  * renormalised weight multiplied by its shortfall from 100. That ranks a
@@ -64,12 +77,14 @@ export default function CheckMatrix({ categories }: { categories: CategoryResult
         assessed && availableWeight > 0 ? CATEGORY_WEIGHTS[category.key] / availableWeight : 0;
 
       const material = category.findings.filter((f) => f.severity !== 'info');
-      const worst = material.length
-        ? material.reduce<Severity>(
-            (acc, f) => (SEVERITY_RANK[f.severity] < SEVERITY_RANK[acc] ? f.severity : acc),
-            'low',
-          )
-        : null;
+      let worst: Severity | null = null;
+      let topFinding: Finding | null = null;
+      for (const finding of material) {
+        if (!worst || SEVERITY_RANK[finding.severity] < SEVERITY_RANK[worst]) {
+          worst = finding.severity;
+          topFinding = finding;
+        }
+      }
 
       return {
         category,
@@ -77,6 +92,7 @@ export default function CheckMatrix({ categories }: { categories: CategoryResult
         lost: assessed ? effectiveWeight * (100 - category.score) : null,
         worst,
         materialCount: material.length,
+        topFinding,
       };
     });
 
@@ -127,6 +143,29 @@ export default function CheckMatrix({ categories }: { categories: CategoryResult
             const unavailable = category.status !== 'assessed';
             const accent = unavailable ? COLORS.inkMuted : TONE_COLORS[riskColorFor(category.score)];
             const isActive = active?.category.key === category.key;
+            /*
+             * The row that has something to say gets more room to say it.
+             * `unavailable` earns the same treatment as a bad score — a
+             * missing measurement is not a quiet fact either.
+             *
+             * Network Exposure gets one narrow carve-out on top of the score
+             * rule: any real (non-info) finding expands it, even when the
+             * weighted penalty alone keeps the score at or above 80. A single
+             * open remote-access port only costs 15 points — enough to stay
+             * "healthy" by the composite's arithmetic while still being a
+             * named, third-party-observed open door, which is a different
+             * kind of thing than a header misconfiguration costing the same
+             * 15 points. This does not touch the finding's severity (still
+             * honestly 'medium' — see `internetdb.ts`'s own "one step below a
+             * direct observation" reasoning) and does not reorder the
+             * category out of its documented last-place position; it only
+             * says this specific category's findings are worth a second look
+             * regardless of what they cost the composite.
+             */
+            const expanded =
+              unavailable ||
+              category.score < EXPAND_BELOW ||
+              (category.key === 'internetdb' && row.worst !== null && row.worst !== 'info');
 
             return (
               <li key={category.key}>
@@ -134,18 +173,26 @@ export default function CheckMatrix({ categories }: { categories: CategoryResult
                   type="button"
                   onClick={() => setSelected(category.key)}
                   aria-current={isActive}
-                  className={`grid w-full grid-cols-[26px_minmax(0,1fr)_54px_88px_42px] items-center gap-3
-                    border-t border-line px-5 py-[11px] text-left transition-colors duration-150
-                    hover:bg-raised sm:gap-4 sm:px-6 ${isActive ? 'bg-raised' : ''}`}
+                  className={`grid w-full grid-cols-[26px_minmax(0,1fr)_54px_88px_42px] items-center
+                    gap-x-3 gap-y-1.5 border-t border-line text-left transition-colors duration-150
+                    hover:bg-raised sm:gap-x-4 ${
+                      expanded ? 'px-5 py-4 sm:px-6' : 'px-5 py-[11px] sm:px-6'
+                    } ${isActive ? 'bg-raised' : ''}`}
                 >
-                  <span className="font-mono text-[10.5px] text-tx-3 tabular-nums">
+                  <span
+                    className={`font-mono text-tx-3 tabular-nums ${expanded ? 'text-[11px]' : 'text-[10.5px]'}`}
+                  >
                     {String(i + 1).padStart(2, '0')}
                   </span>
 
-                  {/* One line per check, so all ten stay on one screen. The
-                      dot carries the worst severity present. */}
+                  {/* One line per check, so every row still reads at a
+                      glance. The dot carries the worst severity present. */}
                   <span className="flex min-w-0 items-center gap-3">
-                    <span className="truncate text-[13.5px] font-medium leading-tight text-tx">
+                    <span
+                      className={`truncate font-medium leading-tight text-tx ${
+                        expanded ? 'text-[15px]' : 'text-[13.5px]'
+                      }`}
+                    >
                       {category.label}
                     </span>
                     <span className="ml-auto hidden shrink-0 items-center gap-1.5 text-[11px] text-tx-3 sm:flex">
@@ -174,8 +221,13 @@ export default function CheckMatrix({ categories }: { categories: CategoryResult
                     )}
                   </span>
 
-                  {/* Bar reads as the score itself, coloured by band. */}
-                  <span className="relative block h-[6px] w-full bg-line">
+                  {/* Bar reads as the score itself, coloured by band —
+                      thicker on an expanded row, so the row that earned more
+                      space also earns a more legible bar rather than the same
+                      6px sliver stretched across it. */}
+                  <span
+                    className={`relative block w-full bg-line ${expanded ? 'h-[8px]' : 'h-[6px]'}`}
+                  >
                     <span
                       className="absolute inset-y-0 left-0 transition-[width] duration-700 ease-out"
                       style={{
@@ -186,11 +238,38 @@ export default function CheckMatrix({ categories }: { categories: CategoryResult
                   </span>
 
                   <span
-                    className="text-right font-mono text-[13px] font-medium tabular-nums"
+                    className={`text-right font-mono font-medium tabular-nums ${
+                      expanded ? 'text-[15px]' : 'text-[13px]'
+                    }`}
                     style={{ color: unavailable ? undefined : accent }}
                   >
                     {unavailable ? <span className="text-tx-3">n/a</span> : category.score}
                   </span>
+
+                  {/*
+                   * The expanded row's reason for being expanded, surfaced
+                   * without a click. Aligned under the check name by grid
+                   * column rather than by a guessed indent, so it holds at
+                   * every width the name column itself holds at.
+                   */}
+                  {expanded && row.topFinding && (
+                    <span className="col-start-2 col-span-4 flex min-w-0 items-baseline gap-2.5">
+                      <span
+                        className="shrink-0 font-mono text-[9.5px] font-medium uppercase tracking-[0.12em]"
+                        style={{ color: row.worst ? SEVERITY_COLORS[row.worst] : undefined }}
+                      >
+                        {row.worst}
+                      </span>
+                      <span className="truncate text-[12px] leading-relaxed text-tx-2">
+                        {row.topFinding.title}
+                      </span>
+                    </span>
+                  )}
+                  {expanded && !row.topFinding && unavailable && (
+                    <span className="col-start-2 col-span-4 text-[12px] leading-relaxed text-tx-3">
+                      {category.error ?? 'This source did not answer during the scan.'}
+                    </span>
+                  )}
                 </button>
               </li>
             );

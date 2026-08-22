@@ -18,6 +18,7 @@ import { CATEGORY_ORDER } from '@/lib/constants';
 
 const PAGE = readFileSync(join(process.cwd(), 'src', 'app', 'methodology', 'page.tsx'), 'utf8');
 const SCORING = readFileSync(join(process.cwd(), 'src', 'lib', 'scoring.ts'), 'utf8');
+const VALIDATIONS = readFileSync(join(process.cwd(), 'src', 'lib', 'validations.ts'), 'utf8');
 
 describe('the module tables', () => {
   it('are rendered from CATEGORY_ORDER, not typed out', () => {
@@ -98,8 +99,11 @@ describe('what it refuses to claim', () => {
   });
 
   it('records corrections, not only confirmations', () => {
-    // A validation table containing only successes is a marketing page.
-    const outcomes = [...PAGE.matchAll(/outcome: '(match|fixed)'/g)].map((m) => m[1]);
+    // A validation table containing only successes is a marketing page. The
+    // rows themselves live in `src/lib/validations.ts` now — shared with the
+    // landing page's validation strip — so this reads them from there.
+    expect(PAGE).toContain("from '@/lib/validations'");
+    const outcomes = [...VALIDATIONS.matchAll(/outcome: '(match|fixed)'/g)].map((m) => m[1]);
     expect(outcomes.filter((o) => o === 'fixed').length).toBeGreaterThan(0);
     expect(outcomes.filter((o) => o === 'match').length).toBeGreaterThan(0);
   });

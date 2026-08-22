@@ -79,7 +79,11 @@ export default function ScanProgress({
         />
       </div>
 
-      <ul className="panel mt-6 overflow-hidden">
+      {/* `stagger`: every row is on screen from the first frame — see the
+          note above — but it still arrives as one short sequence rather than
+          appearing all at once, which is the first thing that makes a wait
+          register as "something started" instead of "something loaded". */}
+      <ul className="panel stagger mt-6 overflow-hidden">
         {modules.map((module, i) => {
           const accent =
             module.status === 'complete' && module.score !== undefined
@@ -125,7 +129,11 @@ export default function ScanProgress({
                 )}
               </span>
 
-              <span className="text-right font-mono text-[12.5px] tabular-nums">
+              {/* `key` forces a fresh mount the moment a module leaves
+                  `running` — the only reliable way to replay a CSS entrance
+                  animation on a value that changes in place, and the moment a
+                  reader's eye is on this exact row: it just moved. */}
+              <span key={module.status} className="animate-rise text-right font-mono text-[12.5px] tabular-nums">
                 {module.status === 'complete' && module.score !== undefined ? (
                   <span style={{ color: accent }}>{module.score}</span>
                 ) : module.status === 'failed' ? (

@@ -515,3 +515,180 @@ banner is pinned to the module registry; the methodology page's weights and
 factor tables are pinned to `scoring.ts`. The boundary claims deserve the same
 kind of tie, and the next module that crosses one should fail a test rather
 than a reading.
+
+---
+
+# Hierarchy, spent where the meaning is
+
+A pass over the results dashboard and the landing page, briefed against a
+specific complaint: every card carried the same padding, the same border, the
+same type size, so a critical finding and an info observation were
+distinguishable only by a small colour change, and the eye had nowhere to
+land. Read literally, "add hierarchy" is instructions to make some things
+bigger. Read correctly, it is instructions to make the *page's own severity
+model* — which already exists in `scoring.ts` and the `Severity` type — show
+up as physical space instead of stopping at a colour. Everything below is one
+rule applied in three places, not three separate decisions.
+
+**The rule.** Visual weight tracks what the number or the severity already
+says, never an editorial judgement layered on top. A category at 32 is bigger
+than one at 95 because `riskColorFor` already called it `bad`; a critical
+finding is louder than an info one because `SEVERITY_ORDER` already ranks it
+first. Nothing here introduces a second scale — every threshold used below
+already existed in `scoring.ts` or `constants.ts` before this pass, and is
+imported rather than restated.
+
+## A third elevation level, spent on one thing at a time
+
+The system already had three steps on the neutral ramp — `--ground`,
+`--panel`, `--raised` — but `--raised` was doing double duty as both "a card
+worth more attention" and "the hover state of an ordinary row," which is why
+nothing on the page read as more important than anything else: the one token
+that could have carried emphasis was busy being a hover effect.
+
+`.panel-elevated` (`globals.css`) claims `--raised` for the first job
+exclusively — a stronger hairline (`--line-strong` instead of `--line`) and a
+real cast shadow in place of `panel`'s 1px inset — and it is used in exactly
+one place on the results dashboard: the composite score. Not the severity
+ledger beside it, not a category card, not a finding. One elevated object per
+screen is the point; a second one would have cancelled the first the same way
+the old uniform padding did. The findings register gets its own loud
+treatment lower down, and deliberately does *not* reach for this class — see
+below.
+
+`.readout` is the second new primitive: a recessed surface (inset shadow, on
+`--ground`) for a value rather than a container — a hostname, a score, a
+status code. Nothing currently ships in it, but it exists for the next place
+a raw measurement needs to read as an instrument reading rather than a slot
+a card fills.
+
+The body ground also gained a fourth background layer: a `feTurbulence` grain
+tile, alpha capped at 2% *inside the SVG filter itself* rather than as a CSS
+opacity on the layer, because `background-image` has no per-layer opacity —
+only the element does, and the element already carries three other layers.
+It is the cheapest lever against "flat" there is: it costs one more
+`background-image` entry and changes nothing else.
+
+## The score, made to be the loudest thing on the screen
+
+`ScoreMeter`'s figure grew from `clamp(76px, 12vw, 124px)` to
+`clamp(96px, 15vw, 168px)` — at 1920px it now sets at its full 168px, where it
+previously topped out at 124px regardless of viewport. It sits inside the new
+`.panel-elevated`, with the coverage line ("12 of 12 checks completed") folded
+inside the same surface rather than left as a caption below it, because how
+much of the domain the number is based on is part of reading the number, not
+a footnote to it. The risk band was already inside `ScoreMeter` itself and
+needed no change — it was already adjacent, just easy to miss beside a
+smaller figure.
+
+The severity ledger stays on `.panel`, not `.panel-elevated`, on purpose. It
+is real information and earns a normal card; it does not earn the one surface
+reserved for the single object the whole page is about.
+
+## The category matrix responds to the data instead of a template
+
+`CheckMatrix` already sorted checks by points lost rather than by name, which
+was already better than twelve identical cards — but every row still rendered
+at the same height regardless of what it had to say. `EXPAND_BELOW = 80`
+(matching `riskColorFor`'s own "good" cut, so the row's size and its colour
+never disagree) now splits rows in two:
+
+- **Below 80, or `unavailable`** — larger type (15px vs 13.5px), more padding,
+  and the row's worst finding surfaced inline as a second line, positioned by
+  `col-start-2 col-span-4` on the same grid the header uses rather than a
+  guessed indent (the same lesson `ml-[30px]` taught on the landing page's
+  checks ledger, applied here before it could repeat).
+- **80 and above** — the original compact single line, made slightly quieter
+  by contrast rather than by any change of its own.
+
+A check that scored below the line but raised no severity finding above
+`info` (a coverage shortfall rather than a weakness — `technologies` scoring
+71 with an empty findings list, in one live scan checked during this pass)
+still gets the larger type and padding without a second line. That is
+correct rather than an edge case slipping through: the row is still saying
+"look here," just without a specific finding to quote.
+
+## The findings register, read at three densities
+
+The single biggest change. The previous `FindingsTable` was one `<table>`
+where severity was a difference of a few pixels of coloured text — a domain
+with one critical finding and fourteen low-severity ones rendered as fifteen
+visually identical rows.
+
+Severity now buys space, in three tiers:
+
+- **Critical and high** render as individual elevated cards — a 3px coloured
+  left edge, a ~5% tint of the same hue behind the whole card, and the
+  largest title type in the register (15.5px). Deliberately *not*
+  `.panel-elevated`: that class is reserved for the one object per screen
+  described above, and a findings list can carry several loud cards at once
+  without contradicting it. The distinction is real: elevation says "the one
+  thing this page is about," a tinted edge says "pay attention to this one
+  among several."
+- **Medium** renders at the weight the entire table used to render at —
+  unchanged, because medium was already the right default; only the
+  extremes needed to move.
+- **Low and info** collapse into one row — "N low-severity observations" —
+  behind a single click, at the highest density in the register (12px type,
+  2px vertical padding). Filtering to exactly `Low` or `Info` opens the group
+  automatically, because a reader who asked for those severities specifically
+  asked to see them, and the collapse is a default for the *unfiltered*
+  register, not a rule about the severities themselves.
+
+**What this cost, and why it was worth it.** The previous table's
+column-sort control (severity / finding / check, each independently
+sortable) is gone. Once severity is the layout rather than a column, a
+"sorted by title, ignoring severity" view no longer makes sense to offer —
+it would be a control that actively undoes the hierarchy the rest of the
+component just built. The severity filter chips stay, and are still the way
+to see one tier in isolation.
+
+Inside `FindingDetail`, the same rule reaches one level deeper: the
+"cannot establish" limitation line — previously styled identically to every
+other evidence row — is now the one line in the whole component set in
+italic tertiary ink (`quiet` prop on `EvidenceRow`). Observed and
+Recommendation were already primary ink, Interpretation and Risk already
+secondary; the limitation is the only field that describes a boundary rather
+than a fact, and it is now the only one that reads like a caveat.
+
+## Motion, orchestrated once and then reused
+
+The results dashboard's entrance is four `animate-rise` calls at increasing
+delay — summary (20ms), priority actions (75ms), the check matrix (130ms),
+the findings register (190ms) — rather than a scroll-triggered reveal, since
+the whole dashboard is already in the viewport the moment it mounts. `.stagger`
+(30ms per row, already used for the priority-findings list) now also drives
+`ScanProgress`'s module list on its own mount, and a completed or failed
+module's score cell remounts on its own status change (`key={module.status}`)
+so it replays the same rise animation exactly once, at the moment a reader's
+eye is already on that row because it just changed.
+
+A new `.stagger-lg` (55ms per step, `globals.css`) exists for future
+page-level sequences with a handful of large sections rather than many short
+rows — `.stagger`'s 30ms steps are tuned for the latter and would make a
+four-section sequence feel sluggish rather than crisp.
+
+**A real gap this pass found and closed, not introduced by it.** The
+reduced-motion block zeroed `animation-duration` and `transition-duration`
+but never `animation-delay` — so an element staggered 190ms out still opened
+at its animation's `0%` state (`opacity: 0`) and sat invisible for that whole
+delay before an now-instant animation played. `[data-reveal]` was already
+immune, because its reduced-motion override drops the hidden state outright
+rather than trusting the animation timeline at all. Every `.stagger` /
+`.stagger-lg` / `animate-rise` usage — including the ones already shipping
+before this pass — was not. `animation-delay: 0s !important` closes it for
+all of them at once, in the same universal selector that already zeroes
+duration.
+
+## The landing page: mostly already there
+
+Read against the brief's four asks — a dominant hero input, a live stat
+strip, the checks presented densely with real weights, a sample finding shown
+in full, a validation strip — the first four were already built in an earlier
+pass (`Hero`, the stat grid, `SignalBand` + the checks ledger, `FindingAnatomy`).
+The one gap was the validation strip. `ValidationStrip` (`components/home/`)
+quotes three rows — one "held up," two "Klyro was wrong" — from the same
+`VALIDATIONS` array `/methodology`'s "Track record" table reads, pulled out to
+`src/lib/validations.ts` so neither page can drift from the other; both kinds
+of outcome are shown on purpose, for the same reason the methodology page
+lists both. `tests/home-page.test.ts` pins the import, not a copy.

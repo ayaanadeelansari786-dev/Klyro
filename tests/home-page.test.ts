@@ -216,6 +216,28 @@ describe('the checks ledger', () => {
   });
 });
 
+describe('the validation strip', () => {
+  const strip = src('components', 'home', 'ValidationStrip.tsx');
+  const methodology = src('app', 'methodology', 'page.tsx');
+
+  it('reads from the same source methodology does, not a paraphrase of it', () => {
+    expect(strip).toContain("from '@/lib/validations'");
+    expect(methodology).toContain("from '@/lib/validations'");
+    // Neither page defines its own copy of the table any more.
+    expect(methodology).not.toMatch(/const VALIDATIONS/);
+  });
+
+  it('shows both outcomes, not only the flattering one', () => {
+    expect(strip).toContain("'match'");
+    expect(strip).toContain("'fixed'");
+  });
+
+  it('links to the full record on the methodology page', () => {
+    expect(strip).toContain('href="/methodology#validation"');
+    expect(methodology).toContain('id="validation"');
+  });
+});
+
 describe('motion', () => {
   const motion = src('components', 'motion.tsx');
   const css = readFileSync(join(process.cwd(), 'src', 'app', 'globals.css'), 'utf8');

@@ -479,7 +479,11 @@ export default function ResultsView() {
       )}
 
       {/* ---------- Summary ---------- */}
-      <section id="summary" className="scroll-mt-[120px] py-10 sm:py-12">
+      <section
+        id="summary"
+        className="scroll-mt-[120px] animate-rise py-10 sm:py-12"
+        style={{ animationDelay: '20ms' }}
+      >
         <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
           <h1 className="font-mono text-[24px] leading-none tracking-tight text-tx sm:text-[30px]">
             {result.domain}
@@ -499,7 +503,7 @@ export default function ResultsView() {
           </span>
         </div>
 
-        <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-14">
+        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-6">
           <div>
             {/* Above the gauge, deliberately. Under this threshold the number
                 below is more a statement about reach than about posture, and a
@@ -517,24 +521,31 @@ export default function ResultsView() {
               </div>
             )}
 
-            <ScoreMeter
-              score={result.compositeScore}
-              peerAverage={
-                benchmark && benchmark.totalScans > 0 ? benchmark.industryAverage : null
-              }
-            />
+            {/*
+             * The instrument. The one elevated surface on this screen — the
+             * composite is the single object everything else on the page is
+             * context for, and it is the only thing that gets the third
+             * elevation level. The coverage line sits inside it rather than
+             * below the fold of the card, because "how much of this reading
+             * to trust" is part of reading the number, not a footnote to it.
+             */}
+            <div className="panel-elevated px-6 py-7 sm:px-9 sm:py-9">
+              <ScoreMeter
+                score={result.compositeScore}
+                peerAverage={
+                  benchmark && benchmark.totalScans > 0 ? benchmark.industryAverage : null
+                }
+              />
 
-            {/* Always visible, not only when low. Ordinary transparency: the
-                reader should never have to work out how much of the domain the
-                number is based on. */}
-            <p className="mt-4 text-[12px] text-tx-3">
-              {coverageCounts(result).assessed} of {coverageCounts(result).total} checks completed
-              {result.coverage < 0.999 && (
-                <> · {Math.round(result.coverage * 100)}% of scoring weight</>
-              )}
-            </p>
+              <p className="mt-6 border-t border-line pt-4 text-[12px] text-tx-3">
+                {coverageCounts(result).assessed} of {coverageCounts(result).total} checks completed
+                {result.coverage < 0.999 && (
+                  <> · {Math.round(result.coverage * 100)}% of scoring weight</>
+                )}
+              </p>
+            </div>
 
-            <p className="mt-9 max-w-2xl text-[13.5px] leading-relaxed text-tx-2">
+            <p className="mt-7 max-w-2xl text-[13.5px] leading-relaxed text-tx-2">
               {benchmarkSentence(benchmark, result.compositeScore, result.domain)}
             </p>
 
@@ -549,7 +560,10 @@ export default function ResultsView() {
             )}
           </div>
 
-          {/* Severity ledger — counts, not cards. */}
+          {/* Severity ledger — counts, not cards. Deliberately the quieter
+              `.panel`, not `.panel-elevated`: one object on this screen gets
+              the loudest surface, and it is the score, not the tally beside
+              it. */}
           <div className="panel self-start">
             <p className="micro px-5 pt-4">Open findings</p>
             <ul className="mt-2">
@@ -600,7 +614,7 @@ export default function ResultsView() {
 
       {/* ---------- Priority actions ---------- */}
       {topFindings.length > 0 && (
-        <section className="panel overflow-hidden">
+        <section className="panel animate-rise overflow-hidden" style={{ animationDelay: '75ms' }}>
           <div className="px-5 py-5 sm:px-6">
             <p className="micro">Priority</p>
             <h2 className="mt-2 text-[17px] font-semibold tracking-tight text-tx">
@@ -673,8 +687,12 @@ export default function ResultsView() {
         </section>
       )}
 
-      {/* ---------- The ten checks ---------- */}
-      <section id="checks" className="scroll-mt-[120px] pt-10">
+      {/* ---------- The checks ---------- */}
+      <section
+        id="checks"
+        className="scroll-mt-[120px] animate-rise pt-10"
+        style={{ animationDelay: '130ms' }}
+      >
         <CheckMatrix categories={orderedCategories} />
       </section>
 
@@ -711,7 +729,11 @@ export default function ResultsView() {
       </section>
 
       {/* ---------- Findings ---------- */}
-      <section id="findings" className="scroll-mt-[120px] pt-10">
+      <section
+        id="findings"
+        className="scroll-mt-[120px] animate-rise pt-10"
+        style={{ animationDelay: '190ms' }}
+      >
         <FindingsTable findings={result.findings} />
       </section>
 

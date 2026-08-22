@@ -184,9 +184,20 @@
 
   body {
     @apply bg-ground text-tx font-sans antialiased;
-    /* A ruled ledger ground, barely above the noise floor, plus one soft lift
-       from the top edge. No colour — the palette owes its hues to risk. */
+    /*
+     * A ruled ledger ground, barely above the noise floor, plus one soft lift
+     * from the top edge and a grain pass on top of both. No colour — the
+     * palette owes its hues to risk.
+     *
+     * The grain is a `feTurbulence` rect with its alpha capped at 2% inside
+     * the filter itself (the last term of the colour matrix), rather than an
+     * opacity applied to the layer from outside — CSS has no per-layer
+     * opacity on `background-image`, only on the element, so the cap has to
+     * live inside the SVG. At 2% it reads as texture rather than noise; it is
+     * the single largest lever against "flat" that costs nothing else.
+     */
     background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0.02 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
       linear-gradient(
         to right,
         rgb(var(--rule-ink) / var(--rule-alpha)) 1px,
@@ -203,6 +214,7 @@
         transparent 70%
       );
     background-size:
+      180px 180px,
       96px 96px,
       96px 96px,
       100% 100%;
@@ -246,6 +258,32 @@
 @layer components {
   .panel {
     @apply rounded-panel border border-line bg-panel shadow-panel;
+  }
+
+  /*
+   * The third elevation level. `ground` is the page, `panel` is a card;
+   * this is the surface reserved for the one object per screen that is
+   * supposed to outweigh every other panel around it — the composite score,
+   * a critical or high finding. It sits on `--raised` rather than a new
+   * token (the system already had a third step on the ramp, it just was not
+   * being spent on anything), with a stronger hairline and a real cast
+   * shadow rather than the 1px inset `panel` carries.
+   */
+  .panel-elevated {
+    @apply rounded-panel border border-line-strong bg-raised;
+    box-shadow:
+      0 1px 0 0 rgb(var(--tx) / 0.03) inset,
+      0 28px 56px -32px rgb(var(--shade) / var(--shade-alpha));
+  }
+
+  /*
+   * A recessed surface for a literal measured value — a score, a hostname, a
+   * status code. The instrument-panel reading, distinct from a card you could
+   * add content to: the inset shadow says "this is a display, not a slot."
+   */
+  .readout {
+    @apply rounded border border-line bg-ground font-mono tabular-nums text-tx;
+    box-shadow: 0 1px 2px 0 rgb(var(--shade) / 0.25) inset;
   }
 
   /* Micro label: the system's structural voice. Mono, caps, wide, dim. */
@@ -337,6 +375,27 @@
   .stagger > *:nth-child(8) { animation-delay: 0.22s; }
   .stagger > *:nth-child(9) { animation-delay: 0.25s; }
   .stagger > *:nth-child(10) { animation-delay: 0.28s; }
+  .stagger > *:nth-child(11) { animation-delay: 0.31s; }
+  .stagger > *:nth-child(12) { animation-delay: 0.34s; }
+
+  /*
+   * The dashboard's own entrance, orchestrated rather than scattered: score,
+   * then the category grid, then the findings register. `.stagger` above is
+   * tuned for a list of many short rows (30ms steps); this is tuned for a
+   * handful of large sections (55ms), so the whole sequence still lands
+   * inside half a second rather than trailing behind the reader's scroll.
+   * Every step is a direct child of the wrapper, in document order.
+   */
+  .stagger-lg > * {
+    animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .stagger-lg > *:nth-child(1) { animation-delay: 0.02s; }
+  .stagger-lg > *:nth-child(2) { animation-delay: 0.075s; }
+  .stagger-lg > *:nth-child(3) { animation-delay: 0.13s; }
+  .stagger-lg > *:nth-child(4) { animation-delay: 0.185s; }
+  .stagger-lg > *:nth-child(5) { animation-delay: 0.24s; }
+  .stagger-lg > *:nth-child(6) { animation-delay: 0.295s; }
+  .stagger-lg > *:nth-child(7) { animation-delay: 0.35s; }
 
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -405,6 +464,17 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    /*
+     * The gap this closes: zeroing `animation-duration` alone leaves
+     * `animation-delay` standing, so an entrance staggered up to 350ms out
+     * (`.stagger`, `.stagger-lg`, the score-first/matrix/findings sequence on
+     * the results page) still opens on `opacity: 0` and sits invisible for
+     * that whole delay before its now-instant animation plays. `[data-reveal]`
+     * below was already immune, because it drops the hidden state outright
+     * rather than relying on the animation timeline at all; this is the same
+     * guarantee for everything driven by an actual `animation-name` instead.
+     */
+    animation-delay: 0s !important;
   }
   .dial-drum {
     transform: none;

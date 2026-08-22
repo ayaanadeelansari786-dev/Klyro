@@ -79,15 +79,21 @@ export default function ScoreMeter({
 
   return (
     <div className="flex flex-col gap-8 sm:flex-row sm:items-end sm:gap-10">
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-2.5">
+        {/*
+         * The largest object on the page, deliberately — the score is the
+         * one figure this entire assessment reduces to, and everything else
+         * on the dashboard is context for it. `15vw` gives it real headroom
+         * on a wide screen rather than pinning it to the size of a card.
+         */}
         <span
           className="num wide block font-semibold leading-[0.8]"
-          style={{ fontSize: 'clamp(76px, 12vw, 124px)', color: accent }}
+          style={{ fontSize: 'clamp(96px, 15vw, 168px)', color: accent }}
           aria-label={`Composite exposure score ${score} out of 100`}
         >
           {Math.round(displayed)}
         </span>
-        <span className="mt-2 font-mono text-[12px] text-tx-3">/100</span>
+        <span className="mt-3 font-mono text-[13px] text-tx-3">/100</span>
       </div>
 
       <div className="min-w-0 flex-1 pb-2">

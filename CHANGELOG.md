@@ -5,6 +5,52 @@ All notable changes to Klyro are recorded here.
 `TOOL_VERSION` in `src/lib/constants.ts` is written onto every stored
 assessment, so a report can always be traced to the version that produced it.
 
+## [1.9.0] — 2026-08-22
+
+### Results dashboard: hierarchy, depth, and motion
+
+Presentation-layer pass over the results dashboard and landing page. Nothing
+in scan logic, scoring, or the database changed.
+
+- A third elevation tier, `.panel-elevated`, reserved for exactly one object
+  per screen — the composite score, now `clamp(96px, 15vw, 168px)` (was
+  capped at 124px) and wrapped with its coverage line in the new surface. A
+  `.readout` primitive exists for the next recessed data reading.
+- `CheckMatrix` rows now expand below a score of 80 — larger type, the row's
+  worst finding surfaced inline — while healthy rows stay compact. Also
+  expands `internetdb` on any real finding regardless of score: a single
+  open remote-access port only costs 15 points, which kept Network Exposure
+  reading "healthy" while a genuine, named, third-party-observed finding sat
+  in a one-line row easy to miss. Severity and category order are untouched.
+- `FindingsTable` rebuilt from a flat table into three densities: critical
+  and high render as tinted, elevated cards; medium keeps its previous
+  weight; low and info collapse behind a single "N low-severity
+  observations" toggle. The previous column-sort control is gone — severity
+  is the layout now, not something to sort away from.
+- `FindingDetail`'s "what this cannot establish" line is now the one line in
+  the component set in quiet italic tertiary ink, matching the rest of the
+  hierarchy: Observed and Recommendation stay primary, Interpretation and
+  Risk stay secondary.
+- Orchestrated page-load entrance (score → priority → matrix → findings) and
+  a `ScanProgress` module list that staggers in and replays a row's
+  completion state on change.
+- Fixed a reduced-motion gap that predates this release: the stylesheet
+  zeroed `animation-duration` but never `animation-delay`, so a staggered
+  element still sat invisible for its full delay under
+  `prefers-reduced-motion` before an instant animation played it in.
+- Landing page gained `ValidationStrip`, quoting three rows — one "held up,"
+  two "Klyro was wrong" — from a new shared `src/lib/validations.ts`, which
+  `/methodology`'s "Track record" table now reads from as well rather than
+  carrying its own copy.
+- A barely-perceptible grain texture (2% alpha, capped inside the SVG filter
+  itself) added to the page ground.
+
+Network Exposure (Shodan InternetDB) was verified already fully registered:
+present in `CATEGORY_ORDER` and `CATEGORY_WEIGHTS` at 8%, wired into the
+module registry, rendering in the exposure matrix and findings register, and
+printing its own page in the PDF. See `DESIGN.md` for the full reasoning
+behind every change in this release.
+
 ## [1.8.0] — 2026-08-21
 
 ### Added
