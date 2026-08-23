@@ -5,6 +5,25 @@ All notable changes to Klyro are recorded here.
 `TOOL_VERSION` in `src/lib/constants.ts` is written onto every stored
 assessment, so a report can always be traced to the version that produced it.
 
+## [1.10.1] — 2026-08-23
+
+### Fixed
+
+- **Light theme text was too faint.** The secondary and tertiary inks were a
+  near-mirror of the dark ramp, landing at 5.82:1 and 4.51:1 on the light
+  ground. Both cleared the 4.5:1 floor and both were hard to read — the floor
+  marks where text is definitely wrong, not where it becomes comfortable, and
+  `--tx-3` carries 11px metadata across the whole dashboard. Now 7.24:1 and
+  5.82:1, with the hierarchy unchanged.
+- **"Sign in to save" was shown to readers who were already signed in.** The
+  dashboard had only `result.persisted` to go on, which is false both for an
+  anonymous scan and for a signed-in scan whose write failed, so a
+  misconfigured deployment told the reader to do the one thing they had
+  already done. The scan stream now reports the outcome (`anonymous`,
+  `saved`, `failed`); a failed save shows "Not saved" and a banner explaining
+  that the deployment is missing the credentials to store assessments, rather
+  than a link that would not have helped.
+
 ## [1.10.0] — 2026-08-23
 
 ### Accounts you can see, and leave

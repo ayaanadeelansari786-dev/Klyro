@@ -93,6 +93,8 @@ export default function ResultsView() {
    * is worse than one that says where it went.
    */
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  /* What became of the save, as reported by the server — see `ScanEvent`. */
+  const [saveState, setSaveState] = useState<'anonymous' | 'saved' | 'failed' | null>(null);
   const [elapsed, setElapsed] = useState(0);
   // News is gathered separately from the scan: it is reported, never scored,
   // so it must not delay or influence the exposure result.
@@ -196,6 +198,7 @@ export default function ResultsView() {
             setResult(event.result);
             setBenchmark(event.benchmark);
             setSaveNotice(event.notice ?? null);
+            setSaveState(event.saveState ?? null);
             setPhase('done');
             break;
           case 'context:running':
@@ -484,6 +487,21 @@ export default function ResultsView() {
             >
               Compare
             </Link>
+          ) : saveState === 'failed' ? (
+            /*
+             * Signed in, and the write did not happen. Offering "Sign in to
+             * save" here — which is what this did before the server started
+             * reporting the outcome — is an instruction the reader has
+             * already followed. The banner above carries the explanation;
+             * this is only the state, and it is not a link because there is
+             * nothing for the reader to click that would fix it.
+             */
+            <span
+              title="This assessment was not stored. See the notice above."
+              className="btn-ghost pointer-events-none hidden border-risk-warn/40 px-3 py-2 text-[12.5px] text-risk-warn md:inline-flex"
+            >
+              Not saved
+            </span>
           ) : (
             <Link
               href="/login"

@@ -121,9 +121,23 @@
       --line: 223 227 233;
       --line-strong: 198 204 214;
 
+      /*
+       * Darker than a mirror of the dark ramp, and deliberately.
+       *
+       * Inverted naively, the secondary and tertiary inks landed at 5.82:1
+       * and 4.51:1 on the light ground. Both clear the 4.5:1 floor on paper
+       * and both were reported as hard to read, which is the floor doing what
+       * a floor does: marking the point below which text is definitely wrong,
+       * not the point above which it is comfortable. `--tx-3` in particular
+       * carries 11px metadata all over the dashboard, where 4.51 is a
+       * technicality rather than a reading experience.
+       *
+       * These are 7.24:1 and 5.64:1. The hierarchy is unchanged — tx over
+       * tx-2 over tx-3 — it is the whole ramp that moved down.
+       */
       --tx: 20 23 28;
-      --tx-2: 85 93 106;
-      --tx-3: 101 109 122;
+      --tx-2: 71 79 92;
+      --tx-3: 85 93 106;
 
       --seal: 166 130 29;
       --seal-ink: 122 98 23;
@@ -154,9 +168,10 @@
     --line: 223 227 233;
     --line-strong: 198 204 214;
 
+    /* See the note in the media-query block above. */
     --tx: 20 23 28;
-    --tx-2: 85 93 106;
-    --tx-3: 101 109 122;
+    --tx-2: 71 79 92;
+    --tx-3: 85 93 106;
 
     --seal: 166 130 29;
     --seal-ink: 122 98 23;

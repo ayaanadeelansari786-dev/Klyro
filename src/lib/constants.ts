@@ -1,6 +1,6 @@
 import type { CategoryKey } from './types';
 
-export const TOOL_VERSION = '1.10.0';
+export const TOOL_VERSION = '1.10.1';
 
 export const INDUSTRIES = [
   'Banking & Finance',

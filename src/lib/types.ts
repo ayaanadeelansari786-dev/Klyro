@@ -549,6 +549,21 @@ export type ScanEvent =
       result: ScanResult;
       benchmark: BenchmarkResult | null;
       /**
+       * What became of the attempt to store this assessment.
+       *
+       * `anonymous` is the expected outcome for a signed-out visitor and is
+       * not a failure: nothing is stored on purpose. `failed` means somebody
+       * was signed in and the write did not happen — a misconfigured
+       * deployment, most often a missing service-role key.
+       *
+       * Reported because the dashboard previously had only `result.persisted`
+       * to go on, which is false in both cases, so it offered a signed-in
+       * reader whose save had failed a "Sign in to save" link. Telling the
+       * two apart is the difference between an explanation and a wrong
+       * instruction.
+       */
+      saveState?: 'anonymous' | 'saved' | 'failed';
+      /**
        * Set when the assessment was saved somewhere other than the caller
        * asked — filed personally because they named an organisation they are
        * not a member of, or are only a viewer in. Shown, not swallowed: a

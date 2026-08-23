@@ -68,8 +68,8 @@ async function persist(
   result: ScanResult,
   benchmark: BenchmarkResult | null,
   owner: OwnerContext,
-): Promise<ScanResult> {
-  if (!owner.userId && !owner.orgId) return result;
+): Promise<{ result: ScanResult; saveState: 'anonymous' | 'saved' | 'failed' }> {
+  if (!owner.userId && !owner.orgId) return { result, saveState: 'anonymous' };
 
   try {
     // Decided before the insert so the stored row records it from the moment
@@ -79,7 +79,7 @@ async function persist(
       .catch(() => false);
 
     const stored = await storeAssessment(result, benchmark, owner, contributes);
-    if (!stored) return result;
+    if (!stored) return { result, saveState: 'failed' };
 
     if (contributes) {
       /*
@@ -93,9 +93,9 @@ async function persist(
       await contributeToBenchmark(stored.id, result).catch(() => undefined);
     }
 
-    return { ...result, id: stored.id, persisted: true };
+    return { result: { ...result, id: stored.id, persisted: true }, saveState: 'saved' };
   } catch {
-    return result;
+    return { result, saveState: 'failed' };
   }
 }
 
@@ -400,11 +400,26 @@ export async function POST(request: Request) {
         // should show the comparison it was written with rather than one
         // recomputed against a corpus that has moved since.
         const benchmark = await getBenchmark(industry, region, result.compositeScore, domain);
-        result = await persist(result, benchmark, owner);
+        const saved = await persist(result, benchmark, owner);
+        result = saved.result;
+
+        /*
+         * A save that was attempted and failed gets said out loud. The
+         * alternative — the previous behaviour — was a signed-in reader
+         * watching a scan complete, seeing nothing stored, and being offered
+         * a link to sign in. `owner.notice` still wins where it is set,
+         * because "filed personally because you are only a viewer" is more
+         * specific than "not saved".
+         */
+        const notice =
+          owner.notice ??
+          (saved.saveState === 'failed'
+            ? 'This assessment could not be saved. It is complete and is shown in full here, but it will not appear in your history — this deployment is missing the credentials needed to store assessments.'
+            : undefined);
 
         // The target's report is complete and is sent now; the comparison
         // arrives when it arrives, the way the news and ownership panels do.
-        send({ type: 'complete', result, benchmark, notice: owner.notice });
+        send({ type: 'complete', result, benchmark, notice, saveState: saved.saveState });
 
         if (contextTask) {
           const snapshot = await contextTask;
