@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { PageFooter, SiteHeader } from '@/components/Chrome';
+import JoinCodePanel from '@/components/JoinCodePanel';
+import { roleAtLeast, type OrgRole } from '@/lib/auth/context';
 import { COLORS } from '@/lib/constants';
 import { riskColorFor } from '@/lib/scoring';
 import { createClientForRequest, getCurrentUser } from '@/lib/supabase/server';
@@ -28,10 +30,12 @@ interface AssessmentRow {
 /**
  * Who is in this organisation, and what they have run.
  *
- * A separate page from `/org/[orgId]` on purpose: that page is administration
- * — membership, roles, the join code — and this one is a record of activity.
- * Mixing "manage who can get in" with "see what has been done" made the
- * settings page longer without making either question easier to answer.
+ * A separate page from `/org/[orgId]` on purpose: that page is membership and
+ * role administration, and this one is a record of activity. The join code
+ * appears on both — an owner checking who has been active is exactly the
+ * moment they are also likely to want it, and `JoinCodePanel` already carries
+ * its own permission gate, so showing it here costs nothing extra to get
+ * right.
  *
  * Open to every member, not gated to admins. `assessments` already grants any
  * member read access to every assessment their organisation owns — `/app`
@@ -87,7 +91,7 @@ export default async function OrgActivityPage({ params }: { params: { orgId: str
   const members = (memberRows ?? []).map((row) => {
     const record = row as unknown as {
       user_id: string;
-      role: string;
+      role: OrgRole;
       profiles: { display_name: string | null } | null;
     };
     return {
@@ -99,6 +103,37 @@ export default async function OrgActivityPage({ params }: { params: { orgId: str
   });
 
   const nameByUserId = new Map(members.map((member) => [member.userId, member.name]));
+
+  const myRole = members.find((member) => member.isYou)?.role ?? null;
+  const canManage = roleAtLeast(myRole, 'admin');
+
+  // Same query the settings page runs, duplicated rather than shared: this
+  // page's own doc comment already explains why `assessments` cannot be
+  // trusted to auto-join `profiles`, and the same reasoning does not apply
+  // here — `organisation_join_codes` has exactly one column that could embed
+  // anything, `org_id`, and that points at `organisations`, not at a table
+  // this panel reads. There is nothing to factor out; the risk that made
+  // `nameByUserId` worth building does not exist for this query.
+  const { data: codeRows } = canManage
+    ? await supabase
+        .from('organisation_join_codes')
+        .select('code_hint, expires_at, revoked_at, max_uses, use_count')
+        .eq('org_id', params.orgId)
+        .is('revoked_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+    : { data: null };
+
+  const liveCode = (codeRows ?? [])[0] as
+    | { code_hint: string; expires_at: string | null; max_uses: number | null; use_count: number }
+    | undefined;
+
+  const liveHint =
+    liveCode &&
+    (!liveCode.expires_at || Date.parse(liveCode.expires_at) > Date.now()) &&
+    (liveCode.max_uses === null || liveCode.use_count < liveCode.max_uses)
+      ? liveCode.code_hint
+      : null;
 
   const { data: assessmentRows } = await supabase
     .from('assessments')
@@ -142,25 +177,29 @@ export default async function OrgActivityPage({ params }: { params: { orgId: str
         </p>
       </div>
 
-      {/* Roster, with each member's share of the organisation's scanning. */}
-      <section className="panel overflow-hidden">
-        <p className="micro px-6 py-4">Members</p>
-        <ul className="border-t border-line">
-          {members.map((member) => (
-            <li key={member.userId} className="ledger-row flex items-center gap-4 px-6 py-3.5">
-              <span className="flex-1 truncate text-[13.5px] text-tx">
-                {member.name}
-                {member.isYou && <span className="ml-2 text-[11.5px] text-tx-3">you</span>}
-              </span>
-              <span className="chip">{member.role}</span>
-              <span className="w-[92px] shrink-0 text-right font-mono text-[12px] tabular-nums text-tx-3">
-                {scanCounts.get(member.userId) ?? 0} scan
-                {(scanCounts.get(member.userId) ?? 0) === 1 ? '' : 's'}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <div className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
+        {/* Roster, with each member's share of the organisation's scanning. */}
+        <section className="panel overflow-hidden">
+          <p className="micro px-6 py-4">Members</p>
+          <ul className="border-t border-line">
+            {members.map((member) => (
+              <li key={member.userId} className="ledger-row flex items-center gap-4 px-6 py-3.5">
+                <span className="flex-1 truncate text-[13.5px] text-tx">
+                  {member.name}
+                  {member.isYou && <span className="ml-2 text-[11.5px] text-tx-3">you</span>}
+                </span>
+                <span className="chip">{member.role}</span>
+                <span className="w-[92px] shrink-0 text-right font-mono text-[12px] tabular-nums text-tx-3">
+                  {scanCounts.get(member.userId) ?? 0} scan
+                  {(scanCounts.get(member.userId) ?? 0) === 1 ? '' : 's'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <JoinCodePanel orgId={organisation.id} canManage={canManage} liveCodeHint={liveHint} />
+      </div>
 
       {/* Every assessment filed under this organisation, newest first, with
           who ran it — the thing the members panel above cannot show on its
