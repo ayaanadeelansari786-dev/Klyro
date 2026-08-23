@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { industryPortfolio } from '@/lib/dataset/portfolio';
+import { organisationPortfolio } from '@/lib/dataset/portfolio';
 import { parseDomain } from '@/lib/domain';
 import { INDUSTRIES } from '@/lib/constants';
 import { createClientForRequest, getCurrentUser } from '@/lib/supabase/server';
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
   const supabase = createClientForRequest();
   if (!supabase) return none;
 
-  const portfolio = await industryPortfolio(supabase, {
+  const portfolio = await organisationPortfolio(supabase, {
     orgId,
     industry,
     domain: parsed.domain,

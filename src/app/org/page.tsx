@@ -80,6 +80,16 @@ export default async function OrgIndexPage() {
                       >
                         {record.organisations.name}
                       </Link>
+                      {/* Open to every role. Assessments filed under an
+                          organisation are readable by all of its members —
+                          that is the policy on `assessments`, not a courtesy
+                          — so a viewer gets the same link an owner does. */}
+                      <Link
+                        href={`/org/${record.organisations.id}/activity`}
+                        className="text-[11.5px] text-tx-3 transition-colors hover:text-tx"
+                      >
+                        Activity
+                      </Link>
                       <span className="chip">{record.role}</span>
                     </li>
                   );

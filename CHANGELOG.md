@@ -5,6 +5,61 @@ All notable changes to Klyro are recorded here.
 `TOOL_VERSION` in `src/lib/constants.ts` is written onto every stored
 assessment, so a report can always be traced to the version that produced it.
 
+## [1.12.0] — 2026-08-24
+
+### Added
+
+- **A vendor is now ranked against the organisation's whole portfolio, not
+  only its own industry.** The portfolio panel carries two switchable sets:
+  the vendor's industry, and every domain the organisation has assessed
+  regardless of sector. The industry set is the sharper comparison and leads
+  when it has anything in it — but it is empty for the first vendor in every
+  new industry, which early on is most of them, and a buyer with a
+  three-sector supplier list was being shown "first of one" while a
+  nine-vendor ranking existed and went unmentioned.
+- Both rankings come from one query, split in memory rather than fetched
+  twice. A test asserts the fetch is never filtered by industry, because that
+  is invisible in the output and would otherwise regress silently.
+- The mixed set labels each peer's industry and says plainly what it costs:
+  sectors differ in what they typically expose, so a low position there can
+  reflect the industry as much as the vendor. Neither set is described as a
+  percentile — the shared benchmark's thirty-domain floor exists precisely to
+  keep that word attached to a claim that can support it.
+- **Owners can delete an organisation**, from the settings page. Verified
+  against the live database under simulated row-level security before
+  shipping: a viewer's delete removes 0 rows, an owner's removes 1, and the
+  organisation's assessments and member rows go to 0 with it.
+- The confirmation states the cascade in counts the reader can check against
+  the page they are standing on — *n* saved assessments, for every member,
+  not just for them — and requires typing the organisation's name. The
+  cascade is the real design problem here: `assessments.owner_org_id` is
+  `on delete cascade` and the table's check constraint requires exactly one
+  of `owner_user_id` / `owner_org_id`, so there is no option to orphan the
+  assessments to whoever ran them. An interface calling this "delete an
+  organisation" is not describing what it does.
+- Anonymised rows already contributed to the shared benchmark corpus survive
+  the delete and the panel says so — they carry no organisation reference by
+  design and cannot be traced back.
+
+### Changed
+
+- The activity dashboard is now linked from `/org` and `/app`, for every
+  member at every role. The visibility itself was never restricted —
+  `assessments` grants read to `app.is_org_member`, verified again here — but
+  the only route to the page was the organisation settings page, so a viewer
+  who had no reason to open settings had no way to find it.
+
+### Security
+
+- The delete route re-tests nothing in TypeScript. Authorisation is the
+  DELETE policy on `organisations` (`app.has_org_role(id, 'owner')`), the
+  route runs as the caller, and a non-owner deletes no rows whatever they
+  post. The typed-name confirmation is a guard against a mis-click, not
+  against an attacker, and is described as such in the code. A test asserts
+  the route contains no role check of its own, so a future edit cannot
+  quietly add a second copy of the rule that is free to disagree with the
+  first.
+
 ## [1.11.0] — 2026-08-23
 
 ### Added

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 
 import BenchmarkOptIn from '@/components/BenchmarkOptIn';
 import { PageFooter, SiteHeader } from '@/components/Chrome';
+import DeleteOrgPanel from '@/components/DeleteOrgPanel';
 import JoinCodePanel from '@/components/JoinCodePanel';
 import { roleAtLeast, type OrgRole } from '@/lib/auth/context';
 import { createClientForRequest, getCurrentUser } from '@/lib/supabase/server';
@@ -83,6 +84,7 @@ export default async function OrgPage({ params }: { params: { orgId: string } })
 
   const myRole = members.find((member) => member.isYou)?.role ?? null;
   const canManage = roleAtLeast(myRole, 'admin');
+  const canDelete = roleAtLeast(myRole, 'owner');
 
   // Only administrators can read this table at all, and the hash column is
   // revoked from every client role — so this returns the hint or nothing.
@@ -170,6 +172,16 @@ export default async function OrgPage({ params }: { params: { orgId: string } })
             optedIn={organisation.benchmark_opt_in === true}
             canManage={canManage}
           />
+          {/* Owners only, and last on the page — a destructive control does
+              not belong above the settings people came here to change. */}
+          {canDelete && (
+            <DeleteOrgPanel
+              orgId={organisation.id}
+              orgName={organisation.name}
+              memberCount={members.length}
+              assessmentCount={assessmentCount ?? 0}
+            />
+          )}
         </div>
       </div>
 

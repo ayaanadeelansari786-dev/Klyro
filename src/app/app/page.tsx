@@ -101,7 +101,8 @@ export default async function AppPage() {
             Nothing here yet. Assessments you run while signed in are saved automatically, and two
             assessments of the same domain can be compared to see what changed. Assessments filed
             under an organisation appear here for every member of it, and a new vendor is ranked
-            against the others that organisation has assessed in the same industry.
+            against the others that organisation has assessed — within its own industry, and across
+            the whole portfolio.
           </p>
         )}
       </div>
@@ -172,6 +173,15 @@ export default async function AppPage() {
                     className="flex-1 text-[13.5px] text-tx transition-opacity hover:opacity-70"
                   >
                     {record.organisations.name}
+                  </Link>
+                  {/* Every member, every role. `assessments` grants read to
+                      `app.is_org_member`, so a viewer sees the same roster
+                      and the same filed assessments an owner does. */}
+                  <Link
+                    href={`/org/${record.organisations.id}/activity`}
+                    className="text-[11.5px] text-tx-3 transition-colors hover:text-tx"
+                  >
+                    Activity
                   </Link>
                   <span className="chip">{record.role}</span>
                 </li>
