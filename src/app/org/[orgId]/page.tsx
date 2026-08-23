@@ -119,6 +119,12 @@ export default async function OrgPage({ params }: { params: { orgId: string } })
           <Link href="/org" className="text-[12.5px] text-tx-2 transition-colors hover:text-tx">
             All organisations
           </Link>
+          <Link
+            href={`/org/${organisation.id}/activity`}
+            className="text-[12.5px] text-tx-2 transition-colors hover:text-tx"
+          >
+            Activity
+          </Link>
           <Link href="/app" className="text-[12.5px] text-tx-2 transition-colors hover:text-tx">
             Your assessments
           </Link>

@@ -5,6 +5,31 @@ All notable changes to Klyro are recorded here.
 `TOOL_VERSION` in `src/lib/constants.ts` is written onto every stored
 assessment, so a report can always be traced to the version that produced it.
 
+## [1.11.0] — 2026-08-23
+
+### Added
+
+- **A per-organisation activity dashboard** at `/org/[orgId]/activity`: the
+  member roster with each person's scan count, and every assessment filed
+  under the organisation — score, domain, industry, region, timestamp, and
+  who ran it. Linked from the organisation settings page.
+- Open to any member, not just owners or admins: `assessments` already grants
+  every member read access to everything their organisation owns, and `/app`
+  has shown a colleague's scans since that policy was written. Restricting
+  this specific view would be a page pretending to a boundary the database
+  does not enforce.
+- `created_by` is resolved against the member roster already fetched for the
+  page rather than via a second embedded query. `assessments` has two
+  columns referencing `auth.users` (`owner_user_id` and `created_by`), and
+  `profiles.id` references the same table — asking PostgREST to embed
+  `profiles` through `created_by` is genuinely ambiguous between the two.
+  Verified directly against the database (two foreign keys to `auth.users`
+  confirmed) before writing the workaround, and the workaround itself
+  verified end to end under simulated RLS before shipping: seeded a real
+  organisation, two members, two assessments with different creators, ran
+  the page's exact queries as the row-level-security-restricted member would,
+  confirmed correct attribution, then cleaned up.
+
 ## [1.10.1] — 2026-08-23
 
 ### Fixed
