@@ -509,10 +509,6 @@
     --glass-edge: 255 255 255;
     --glass-edge-alpha: 0.1;
 
-    /* The specular bloom that follows the pointer. White on ink. */
-    --sheen: 255 255 255;
-    --sheen-alpha: 0.07;
-
     /* Cast shadow. Dark themes get depth from a near-black; paper gets it
        from a cool grey, because pure black under a white card reads as dirt. */
     --shade: 0 0 0;
@@ -526,11 +522,6 @@
       --glass-edge: 255 255 255;
       --glass-edge-alpha: 0.95;
 
-      /* Gold, not white: a white bloom on a white pane is invisible, and the
-         seal is the one warm value the system already owns. */
-      --sheen: 201 162 39;
-      --sheen-alpha: 0.13;
-
       --shade: 78 88 108;
       --shade-alpha: 0.22;
     }
@@ -541,8 +532,6 @@
     --glass-alpha: 0.74;
     --glass-edge: 255 255 255;
     --glass-edge-alpha: 0.95;
-    --sheen: 201 162 39;
-    --sheen-alpha: 0.13;
     --shade: 78 88 108;
     --shade-alpha: 0.22;
   }
@@ -586,35 +575,6 @@
       linear-gradient(#000 0 0);
     mask-composite: exclude;
     pointer-events: none;
-  }
-
-  /*
-   * Specular highlight tracking the pointer. `--mx`/`--my` are written by
-   * `useSheen`; with no pointer they are unset and the gradient sits at the
-   * top centre, which is where a fixed light source would put it anyway — so
-   * a touch device and a keyboard user get a lit panel rather than a flat one.
-   *
-   * It paints *over* the content on purpose. Light falls on the front face of
-   * the glass, not behind the words underneath it.
-   */
-  .sheen::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: radial-gradient(
-      380px circle at var(--mx, 50%) var(--my, 0%),
-      rgb(var(--sheen) / var(--sheen-alpha)),
-      rgb(var(--sheen) / 0) 68%
-    );
-    opacity: 0;
-    transition: opacity 420ms ease;
-    pointer-events: none;
-  }
-
-  .sheen:hover::after,
-  .sheen:focus-within::after {
-    opacity: 1;
   }
 
   /* A card that acknowledges the cursor. One step, not a bounce. */

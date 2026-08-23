@@ -163,68 +163,12 @@ export function SplitWords({
 }
 
 /**
- * The specular highlight that follows the pointer across a glazed panel.
- *
- * Writes two custom properties and nothing else — no React state, so a pointer
- * crossing the scan form does not re-render the form on every sample. The rect
- * is cached and refreshed on enter, scroll and resize rather than measured per
- * event, because `getBoundingClientRect` inside `pointermove` is a forced
- * synchronous layout on the one surface the reader is actively using.
- */
-export function useSheen<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    let rect = el.getBoundingClientRect();
-    let frame = 0;
-    let x = 0;
-    let y = 0;
-
-    const remeasure = () => {
-      rect = el.getBoundingClientRect();
-    };
-
-    const apply = () => {
-      frame = 0;
-      el.style.setProperty('--mx', `${x}px`);
-      el.style.setProperty('--my', `${y}px`);
-    };
-
-    const onMove = (event: PointerEvent) => {
-      x = event.clientX - rect.left;
-      y = event.clientY - rect.top;
-      if (!frame) frame = requestAnimationFrame(apply);
-    };
-
-    el.addEventListener('pointermove', onMove);
-    el.addEventListener('pointerenter', remeasure);
-    window.addEventListener('scroll', remeasure, { passive: true });
-    window.addEventListener('resize', remeasure);
-
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      el.removeEventListener('pointermove', onMove);
-      el.removeEventListener('pointerenter', remeasure);
-      window.removeEventListener('scroll', remeasure);
-      window.removeEventListener('resize', remeasure);
-    };
-  }, []);
-
-  return ref;
-}
-
-/**
  * Depth by differential rate: an element that moves more slowly than the page.
  *
- * Written straight to the element's transform, not through state, for the same
- * reason as the sheen — a parallax that re-renders its subtree sixty times a
- * second is a parallax that drops frames. `rate` is the fraction of the page's
- * movement it gives up: 0.12 is a watermark drifting, 0.4 would be a separate
- * object flying past.
+ * Written straight to the element's transform, not through state — a parallax
+ * that re-renders its subtree sixty times a second is a parallax that drops
+ * frames. `rate` is the fraction of the page's movement it gives up: 0.12 is a
+ * watermark drifting, 0.4 would be a separate object flying past.
  */
 export function useParallax<T extends HTMLElement>(rate = 0.12, spin = 0) {
   const ref = useRef<T>(null);

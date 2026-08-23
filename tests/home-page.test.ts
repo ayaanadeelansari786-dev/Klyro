@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -216,25 +216,31 @@ describe('the checks ledger', () => {
   });
 });
 
-describe('the validation strip', () => {
-  const strip = src('components', 'home', 'ValidationStrip.tsx');
+describe('the validation strip, withdrawn', () => {
+  // A landing page is not the room to volunteer the times the product was
+  // wrong — that argument belongs to `/methodology`, for a reader already
+  // deciding whether to trust the output. `ValidationStrip` briefly ran on
+  // the home page and was pulled; this pins the withdrawal the same way the
+  // port-exposure module's is pinned elsewhere, and confirms the shared data
+  // it was built from stayed put under `/methodology`, which read it first.
   const methodology = src('app', 'methodology', 'page.tsx');
 
-  it('reads from the same source methodology does, not a paraphrase of it', () => {
-    expect(strip).toContain("from '@/lib/validations'");
+  it('is not imported by the home page', () => {
+    expect(HOME).not.toContain('ValidationStrip');
+  });
+
+  it('the component itself is gone, not merely unused', () => {
+    expect(existsSync(join(process.cwd(), 'src', 'components', 'home', 'ValidationStrip.tsx'))).toBe(
+      false,
+    );
+  });
+
+  it('methodology still reads the shared validations data, both outcomes', () => {
     expect(methodology).toContain("from '@/lib/validations'");
-    // Neither page defines its own copy of the table any more.
     expect(methodology).not.toMatch(/const VALIDATIONS/);
-  });
-
-  it('shows both outcomes, not only the flattering one', () => {
-    expect(strip).toContain("'match'");
-    expect(strip).toContain("'fixed'");
-  });
-
-  it('links to the full record on the methodology page', () => {
-    expect(strip).toContain('href="/methodology#validation"');
-    expect(methodology).toContain('id="validation"');
+    const validations = src('lib', 'validations.ts');
+    expect(validations).toContain("'match'");
+    expect(validations).toContain("'fixed'");
   });
 });
 
@@ -257,10 +263,12 @@ describe('motion', () => {
   });
 
   it('yields to reduced motion in the handlers, not only in the stylesheet', () => {
-    // The sheen and the parallax write inline styles, which no media query can
-    // undo. They have to check for themselves.
+    // The parallax writes an inline style, which no media query can undo. It
+    // has to check for itself. (The pointer-tracked sheen this guarded
+    // alongside was removed; this now covers the one handler left that writes
+    // inline styles outside the `[data-reveal]` mechanism.)
     const guards = motion.match(/prefers-reduced-motion: reduce/g) ?? [];
-    expect(guards.length).toBeGreaterThanOrEqual(2);
+    expect(guards.length).toBeGreaterThanOrEqual(1);
   });
 
   it('adds no animation runtime to the dependency tree', () => {

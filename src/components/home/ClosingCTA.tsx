@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 
-import { Reveal, useSheen } from '@/components/motion';
+import { Reveal } from '@/components/motion';
 import { CATEGORY_ORDER, RATE_LIMIT_MAX } from '@/lib/constants';
 
 /**
@@ -14,8 +14,6 @@ import { CATEGORY_ORDER, RATE_LIMIT_MAX } from '@/lib/constants';
  * with the scroll, so the next thing they type goes where they meant it to.
  */
 export default function ClosingCTA() {
-  const ref = useSheen<HTMLDivElement>();
-
   function focusDomain() {
     const field = document.getElementById('domain');
     if (!field) return;
@@ -31,7 +29,7 @@ export default function ClosingCTA() {
         aria-labelledby="closing-heading"
         className="mt-24 sm:mt-32"
       >
-        <div ref={ref} className="glass sheen overflow-hidden rounded-[10px] px-7 py-12 sm:px-12 sm:py-16">
+        <div className="glass overflow-hidden rounded-[10px] px-7 py-12 sm:px-12 sm:py-16">
           <div className="flex flex-wrap items-end justify-between gap-x-12 gap-y-8">
             <div>
               <p className="micro">Start</p>

@@ -10,7 +10,6 @@ import HowItWorks from '@/components/home/HowItWorks';
 import ScoreBands from '@/components/home/ScoreBands';
 import SignalBand from '@/components/home/SignalBand';
 import StickyBar from '@/components/home/StickyBar';
-import ValidationStrip from '@/components/home/ValidationStrip';
 
 /**
  * The measure, shared by every section.
@@ -29,14 +28,24 @@ export default function HomePage() {
       <div className={SHELL}>
         <StickyBar>
           <SiteHeader href={null}>
-            <nav className="flex items-center gap-6">
+            {/*
+             * The decorative "External exposure assessment" label that used to
+             * sit here is gone: the header carries the account control now,
+             * and the hero states the same thing forty pixels below.
+             *
+             * The sign-in and create-account links are no longer written here
+             * either. They live in `AccountMenu`, inside `SiteHeader`, which
+             * renders them only when nobody is signed in — a header that
+             * offered "Create account" to somebody already holding one was
+             * the thing worth fixing.
+             */}
+            <nav className="flex items-center gap-4 sm:gap-6">
               <Link
                 href="/rankings"
-                className="text-[12.5px] text-tx-2 transition-colors duration-150 hover:text-tx"
+                className="hidden text-[12.5px] text-tx-2 transition-colors duration-150 hover:text-tx sm:inline"
               >
                 Benchmark dataset
               </Link>
-              <span className="micro hidden sm:inline">External exposure assessment</span>
             </nav>
           </SiteHeader>
         </StickyBar>
@@ -60,7 +69,6 @@ export default function HomePage() {
 
         <ScoreBands />
         <Boundary />
-        <ValidationStrip />
         <ClosingCTA />
         <PageFooter />
       </div>

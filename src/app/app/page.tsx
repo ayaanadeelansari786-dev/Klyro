@@ -40,6 +40,22 @@ export default async function AppPage() {
         ).data ?? [])
       : [];
 
+  /*
+   * Which organisation an assessment belongs to, by name.
+   *
+   * The list above is the union of the reader's own assessments and every
+   * organisation's they belong to — `recentAssessments` applies no ownership
+   * filter, because the policy on `assessments` has already done it. That
+   * makes naming the owner the difference between a useful history and a
+   * confusing one: a member of two organisations otherwise cannot tell which
+   * of them a colleague's scan was filed under, or which rows are their own.
+   */
+  const orgNames = new Map<string, string>();
+  for (const entry of orgs) {
+    const record = entry as unknown as { organisations: { id: string; name: string } | null };
+    if (record.organisations) orgNames.set(record.organisations.id, record.organisations.name);
+  }
+
   return (
     <main className="mx-auto w-full max-w-[1180px] px-5 py-6 sm:px-8 sm:py-8">
       <SiteHeader>
@@ -83,7 +99,9 @@ export default async function AppPage() {
         {user && assessments.length === 0 && (
           <p className="mt-6 max-w-[60ch] text-[13.5px] leading-relaxed text-tx-2">
             Nothing here yet. Assessments you run while signed in are saved automatically, and two
-            assessments of the same domain can be compared to see what changed.
+            assessments of the same domain can be compared to see what changed. Assessments filed
+            under an organisation appear here for every member of it, and a new vendor is ranked
+            against the others that organisation has assessed in the same industry.
           </p>
         )}
       </div>
@@ -117,7 +135,9 @@ export default async function AppPage() {
                     {' · '}
                     {Math.round(scan.coverage * 100)}% assessed
                     {' · '}
-                    {row.owner_org_id ? 'organisation' : 'personal'}
+                    {row.owner_org_id
+                      ? (orgNames.get(row.owner_org_id) ?? 'an organisation')
+                      : 'only you'}
                   </p>
                 </div>
 

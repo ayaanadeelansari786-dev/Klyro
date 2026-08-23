@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export default function SignupPage() {
   return (
     <main className="mx-auto w-full max-w-[1180px] px-5 py-6 sm:px-8 sm:py-8">
-      <SiteHeader>
+      <SiteHeader account={false}>
         <span className="micro hidden sm:inline">Accounts are optional</span>
       </SiteHeader>
 

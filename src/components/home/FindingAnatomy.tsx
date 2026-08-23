@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 
-import { Reveal, useSheen } from '@/components/motion';
+import { Reveal } from '@/components/motion';
 
 /**
  * The anatomy of a finding, as the thing to look at rather than a screenshot.
@@ -80,7 +80,6 @@ function withCode(text: string) {
 export default function FindingAnatomy() {
   const [active, setActive] = useState(0);
   const tabsRef = useRef<(HTMLButtonElement | null)[]>([]);
-  const panelRef = useSheen<HTMLDivElement>();
 
   /* Roving focus, as the tab pattern requires: arrows move between tabs, Home
      and End jump to the ends, and focus follows selection. */
@@ -120,7 +119,7 @@ export default function FindingAnatomy() {
       </div>
 
       <Reveal delay={60}>
-        <div ref={panelRef} className="glass sheen mt-10 overflow-hidden rounded-[10px]">
+        <div className="glass mt-10 overflow-hidden rounded-[10px]">
           {/* The finding's own header line: what it is about, and how sure. */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-6 py-4 sm:px-8">
             {/*

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import AccountMenuSlot from '@/components/AccountMenuSlot';
 import { Emblem } from '@/components/Emblem';
 import ThemeToggle from '@/components/ThemeToggle';
 
@@ -43,15 +44,23 @@ export function Wordmark({ href = '/' }: { href?: string | null }) {
 export function SiteHeader({
   children,
   href = '/',
+  account = true,
 }: {
   children?: React.ReactNode;
   href?: string | null;
+  /**
+   * Set false on the pages that *are* the account flow. `/login` offering a
+   * "Sign in" link, or `/signup` a "Create account" one, is a control that
+   * points at the page it is already on.
+   */
+  account?: boolean;
 }) {
   return (
     <header className="flex items-center justify-between gap-4">
       <Wordmark href={href} />
-      <div className="flex items-center gap-5 sm:gap-6">
+      <div className="flex items-center gap-4 sm:gap-5">
         {children}
+        {account && <AccountMenuSlot />}
         <ThemeToggle />
       </div>
     </header>

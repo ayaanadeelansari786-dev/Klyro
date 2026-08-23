@@ -42,7 +42,7 @@ function Step({ index, step }: { index: number; step: (typeof STEPS)[number] }) 
       ref={ref}
       data-reveal={shown ? 'in' : ''}
       style={{ '--reveal-delay': `${index * 110}ms` } as React.CSSProperties}
-      className="lift glass sheen h-full rounded-[10px] p-6 sm:p-7"
+      className="lift glass h-full rounded-[10px] p-6 sm:p-7"
     >
       <div className="flex items-baseline justify-between gap-4">
         <span className="font-mono text-[11px] tabular-nums tracking-[0.16em] text-seal-ink">

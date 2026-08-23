@@ -5,6 +5,74 @@ All notable changes to Klyro are recorded here.
 `TOOL_VERSION` in `src/lib/constants.ts` is written onto every stored
 assessment, so a report can always be traced to the version that produced it.
 
+## [1.10.0] — 2026-08-23
+
+### Accounts you can see, and leave
+
+- The header now says who is signed in. `AccountMenu` sits inside the shared
+  `SiteHeader`, so every page carries it: signed out it offers sign-in and
+  create-account, signed in it shows the account's name and email — the
+  question a person with a work and a personal login is actually asking — plus
+  links to their assessments and organisations.
+- **Sign out now exists.** It did not, anywhere in the tree, at any point
+  before this release. A person could sign in and had no way back out.
+- Resolved in the browser rather than on the server, so the landing page keeps
+  its static prerender. Subscribed to `onAuthStateChange` rather than read
+  once, so signing out in another tab does not leave a header naming somebody
+  who is no longer there.
+
+### Assessments can be filed to an organisation
+
+`resolveOwner` has accepted an `orgId` since organisations were added, and
+nothing in the interface ever sent one. Every scan a member ran was therefore
+filed personally — invisible to their colleagues, and absent from the
+portfolio below. The scan form now asks, defaulting to the reader's
+organisation, and offers only memberships that may actually write: a viewer
+picking their organisation would have had the scan bounced back to personal
+with a notice, which is a worse way to learn the same thing.
+
+### A vendor against the others you have assessed
+
+A new section on the results page ranks the domain being assessed against the
+other vendors the same organisation has assessed in the same industry —
+"Third of seven Technology vendors Acme has assessed" — with every peer named
+and scored beneath it.
+
+It is deliberately **not** a second benchmark. The shared corpus refuses to
+publish a percentile under `MIN_BENCHMARK_SAMPLES` domains because a
+percentile is a claim about an industry; an organisation will have assessed
+three vendors, or eight. So this states a position within a named set the
+reader assembled themselves, which is true at any pool size because nothing is
+being inferred — and the copy says so, pointing at the shared benchmark as the
+industry comparison. A portfolio of one reports that rather than "first of
+one".
+
+Read through the caller's own client, so the policy on `assessments` decides
+what is in the pool. A non-member gets an empty portfolio rather than a
+refusal, which is the same shape a member with nothing assessed yet gets.
+
+### Also
+
+- History rows name the organisation an assessment belongs to instead of the
+  word "organisation". The page already listed colleagues' assessments — the
+  policy allows it and the query is unscoped — but a member of two
+  organisations could not tell which was which.
+- The pointer-tracked sheen is gone from the four glazed surfaces it sat on. It
+  read as a hover glow rather than as glass catching light, which is the
+  opposite of what it was built for. `useSheen` and its tokens are deleted
+  rather than left unused.
+- The landing page's validation strip is withdrawn, and its component deleted.
+  `/methodology` remains the place that record is kept.
+- Network Exposure has its own dashboard section, alongside Subdomains and
+  Technology, listing each recorded port as its own row rather than folding
+  them into one sentence. Port classification moved to
+  `src/lib/checks/ports.ts` so the dashboard and the check module read one
+  table; importing it from `internetdb.ts` would have pulled Node's `dns` into
+  the browser bundle.
+- Deferring the auth client kept the first-load bundle where it was: adding it
+  to the shared header cost about seventy kilobytes on every page, including
+  two static documents that will never ask who is signed in.
+
 ## [1.9.0] — 2026-08-22
 
 ### Results dashboard: hierarchy, depth, and motion

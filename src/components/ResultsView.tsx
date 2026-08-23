@@ -10,7 +10,9 @@ import { PageFooter, Wordmark } from '@/components/Chrome';
 import ThemeToggle from '@/components/ThemeToggle';
 import FindingsTable from '@/components/FindingsTable';
 import InventoryPanel from '@/components/InventoryPanel';
+import NetworkExposure from '@/components/NetworkExposure';
 import NewsIntel from '@/components/NewsIntel';
+import OrgPortfolio from '@/components/OrgPortfolio';
 import OwnershipPanel, { type OwnershipContext } from '@/components/OwnershipPanel';
 import RadarChart from '@/components/RadarChart';
 import RelationshipPanel, { type ContextState } from '@/components/RelationshipPanel';
@@ -21,6 +23,7 @@ import SubdomainTiers from '@/components/SubdomainTiers';
 import TechnologyStack from '@/components/TechnologyStack';
 
 import { benchmarkSentence } from '@/lib/benchmark';
+import type { InternetDbFacts } from '@/lib/checks/internetdb';
 import { CATEGORY_LABELS, CATEGORY_ORDER, COLORS, INDUSTRIES, REGIONS, SEVERITY_COLORS } from '@/lib/constants';
 import { parseDomain } from '@/lib/domain';
 import {
@@ -31,6 +34,7 @@ import {
   prioritise,
 } from '@/lib/scoring';
 import type { BenchmarkResult, CategoryResult, ScanEvent, ScanResult } from '@/lib/types';
+import type { PortfolioComparison } from '@/lib/dataset/portfolio';
 import type { NewsIntelligence } from '@/lib/intel/types';
 
 /**
@@ -49,6 +53,16 @@ export default function ResultsView() {
   const industryParam = searchParams.get('industry') ?? '';
   const regionParam = searchParams.get('region') ?? '';
   const contextParam = searchParams.get('context') ?? '';
+  /*
+   * Which organisation to file this assessment under, carried from the form.
+   *
+   * Passed straight through without validation, deliberately: this is a claim
+   * arriving in a URL and it is worth nothing here. `resolveOwner` re-checks
+   * the membership against the caller's own session before the scan is filed
+   * anywhere, and an id the reader does not belong to results in a personal
+   * assessment plus a notice rather than an error.
+   */
+  const orgParam = searchParams.get('org') ?? '';
 
   const parsed = parseDomain(domainParam);
   const industry = (INDUSTRIES as readonly string[]).includes(industryParam) ? industryParam : null;
@@ -84,6 +98,7 @@ export default function ResultsView() {
   // so it must not delay or influence the exposure result.
   const [news, setNews] = useState<NewsIntelligence | null>(null);
   const [ownership, setOwnership] = useState<OwnershipContext | null>(null);
+  const [portfolio, setPortfolio] = useState<PortfolioComparison | null>(null);
   // Present only when a second domain was supplied. Arrives after `complete`,
   // since the two scans finish independently.
   const [context, setContext] = useState<ContextState | null>(null);
@@ -111,7 +126,13 @@ export default function ResultsView() {
       const response = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ domain: parsed.domain, industry, region, contextDomain }),
+        body: JSON.stringify({
+          domain: parsed.domain,
+          industry,
+          region,
+          contextDomain,
+          orgId: orgParam || undefined,
+        }),
       });
 
       if (!response.ok || !response.body) {
@@ -232,15 +253,15 @@ export default function ResultsView() {
       setError(err instanceof Error ? err.message : 'The assessment failed.');
       setPhase('error');
     }
-  }, [parsed.domain, industry, region, contextDomain]);
+  }, [parsed.domain, industry, region, contextDomain, orgParam]);
 
   useEffect(() => {
     if (!inputsValid) return;
-    const signature = `${parsed.domain}|${industry}|${region}|${contextDomain ?? ''}`;
+    const signature = `${parsed.domain}|${industry}|${region}|${contextDomain ?? ''}|${orgParam}`;
     if (startedFor.current === signature) return;
     startedFor.current = signature;
     void runScan();
-  }, [inputsValid, parsed.domain, industry, region, contextDomain, runScan]);
+  }, [inputsValid, parsed.domain, industry, region, contextDomain, orgParam, runScan]);
 
   useEffect(() => {
     if (phase !== 'scanning') return;
@@ -411,13 +432,27 @@ export default function ResultsView() {
   const technologyProfile =
     result.categories.find((c) => c.key === 'technologies')?.payload?.technologyProfile ?? null;
 
+  // `facts` rather than `payload`: internetdb predates `CategoryPayload` having
+  // a typed slot of its own, and `facts` already carries everything the
+  // section needs. Only rendered when the module actually produced a record —
+  // `unavailable` (no A record, a reserved address, no Shodan record, or a
+  // transport error) is left to the check matrix's own row, which already
+  // states which of those applies rather than this section repeating it.
+  const internetDbCategory = result.categories.find((c) => c.key === 'internetdb');
+  const exposureFacts =
+    internetDbCategory?.status === 'assessed'
+      ? (internetDbCategory.facts as InternetDbFacts | undefined)
+      : undefined;
+
   const sections = [
     { id: 'summary', label: 'Summary' },
     ...(context ? [{ id: 'context', label: 'Your context' }] : []),
     { id: 'checks', label: 'Checks' },
     ...(subdomains && subdomains.length > 0 ? [{ id: 'subdomains', label: 'Subdomains' }] : []),
     ...(technologyProfile ? [{ id: 'technology', label: 'Technology' }] : []),
+    ...(exposureFacts ? [{ id: 'network-exposure', label: 'Network Exposure' }] : []),
     ...(result.inventory ? [{ id: 'inventory', label: 'Inventory' }] : []),
+    ...(portfolio ? [{ id: 'portfolio', label: 'Portfolio' }] : []),
     { id: 'benchmark', label: 'Benchmark' },
     ...(hasOwnership ? [{ id: 'ownership', label: 'Ownership' }] : []),
     { id: 'findings', label: 'Findings' },
@@ -710,10 +745,37 @@ export default function ResultsView() {
         </section>
       )}
 
+      {/* ---------- Network exposure (Shodan InternetDB) ----------
+           Placed last of the check-derived sections, same as internetdb's own
+           position at the end of CATEGORY_ORDER: everything above this is
+           something Klyro measured directly, and this is somebody else's
+           record. */}
+      {exposureFacts && (
+        <section id="network-exposure" className="scroll-mt-[120px] pt-10">
+          <NetworkExposure facts={exposureFacts} />
+        </section>
+      )}
+
       {/* ---------- Asset inventory — unscored ---------- */}
       {result.inventory && (
         <section id="inventory" className="scroll-mt-[120px] pt-10">
           <InventoryPanel inventory={result.inventory} />
+        </section>
+      )}
+
+      {/* ---------- The organisation's own portfolio ----------
+           Above the shared benchmark deliberately: it is the narrower and
+           more certain of the two comparisons — a named set the reader
+           assembled — and the benchmark's own copy refers back to it. */}
+      {orgParam && (
+        <section id="portfolio" className="scroll-mt-[120px] pt-10">
+          <OrgPortfolio
+            orgId={orgParam}
+            domain={result.domain}
+            industry={result.industry}
+            score={result.compositeScore}
+            onLoaded={setPortfolio}
+          />
         </section>
       )}
 

@@ -1,18 +1,40 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { useSheen } from '@/components/motion';
+import { useMemberships } from '@/components/useMemberships';
 import { CATEGORY_ORDER, INDUSTRIES, REGIONS } from '@/lib/constants';
 import { parseDomain } from '@/lib/domain';
 
 export default function ScanForm() {
   const router = useRouter();
 
-  /* Glazed, so the guilloché behind the hero passes under it; the sheen tracks
-     the pointer across the glass. See the glass rules in globals.css. */
-  const panelRef = useSheen<HTMLFormElement>();
+  /*
+   * Which organisation this assessment gets filed under.
+   *
+   * `null` means personal. It defaults to the reader's organisation rather
+   * than to personal, because an organisation's portfolio is the thing the
+   * comparison on the results page is built from, and a default of "personal"
+   * meant every scan a member ran was invisible to their colleagues and
+   * absent from the portfolio they were trying to build.
+   *
+   * Only memberships that may actually write are offered. A viewer selecting
+   * their organisation would have the scan bounced back to personal by
+   * `resolveOwner` with a notice, which is a worse way to learn the same
+   * thing than not being offered the option.
+   */
+  const { memberships } = useMemberships();
+  const filable = memberships.filter((m) => m.canFile);
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [orgTouched, setOrgTouched] = useState(false);
+
+  // Default once the list arrives, and never again — re-defaulting would undo
+  // a deliberate switch back to personal on the next render.
+  useEffect(() => {
+    if (orgTouched || orgId !== null || filable.length === 0) return;
+    setOrgId(filable[0].id);
+  }, [filable, orgId, orgTouched]);
 
   const [domain, setDomain] = useState('');
   const [industry, setIndustry] = useState<string>(INDUSTRIES[0]);
@@ -46,6 +68,9 @@ export default function ScanForm() {
       region,
     });
 
+    // Carried as a plain id and re-checked server-side; see `resolveOwner`.
+    if (orgId) params.set('org', orgId);
+
     // An empty optional field is simply not used; a filled-in invalid one is a
     // mistake worth stopping for rather than silently dropping.
     const contextRaw = context.trim();
@@ -70,7 +95,7 @@ export default function ScanForm() {
   }
 
   return (
-    <form ref={panelRef} onSubmit={handleSubmit} className="glass sheen w-full" noValidate>
+    <form onSubmit={handleSubmit} className="glass w-full" noValidate>
       {/* Domain — the command line of the product, sized accordingly. */}
       <div className="px-6 pb-5 pt-6 sm:px-8 sm:pt-7">
         <label htmlFor="domain" className="micro block">
@@ -261,6 +286,50 @@ export default function ScanForm() {
           </div>
         </div>
       </div>
+
+      {/*
+        * Where this assessment gets filed. Absent entirely for a signed-out
+        * visitor and for a member of nothing — a control with one option is
+        * not a choice, it is a row of chrome explaining a feature you do not
+        * have.
+        */}
+      {filable.length > 0 && (
+        <>
+          <div className="rule" />
+          <div className="px-6 py-6 sm:px-8">
+            <span className="micro block">Save this assessment to</span>
+            <div className="mt-2.5 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Save this assessment to">
+              {[{ id: null as string | null, name: 'Just me' }, ...filable].map((choice) => {
+                const active = orgId === choice.id;
+                return (
+                  <button
+                    key={choice.id ?? 'personal'}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => {
+                      setOrgTouched(true);
+                      setOrgId(choice.id);
+                    }}
+                    className={`rounded border px-3 py-2 text-[12.5px] transition-colors duration-150 ${
+                      active
+                        ? 'border-tx bg-tx text-ground'
+                        : 'border-line bg-raised text-tx-2 hover:border-line-strong hover:text-tx'
+                    }`}
+                  >
+                    {choice.name}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-3 max-w-lg text-[11.5px] leading-relaxed text-tx-3">
+              {orgId
+                ? 'Everyone in this organisation can read this assessment, and it joins the portfolio this vendor is compared against.'
+                : 'Only you can read this assessment. It is not added to any organisation’s portfolio.'}
+            </p>
+          </div>
+        </>
+      )}
 
       <div className="rule" />
 

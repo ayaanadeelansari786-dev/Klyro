@@ -692,3 +692,71 @@ quotes three rows — one "held up," two "Klyro was wrong" — from the same
 `src/lib/validations.ts` so neither page can drift from the other; both kinds
 of outcome are shown on purpose, for the same reason the methodology page
 lists both. `tests/home-page.test.ts` pins the import, not a copy.
+
+**Withdrawn, and the code is gone with it** — the same call made about the
+port-exposure module earlier in this document, for the same reason: a landing
+page is not the room to volunteer the times the product was wrong. That
+argument belongs to `/methodology`, read by someone already deciding whether
+to trust the output, not to the front door every visitor lands on first.
+`ValidationStrip.tsx` is deleted rather than left importable-but-unused.
+`src/lib/validations.ts` stays — `/methodology`'s own Track record table
+reads from it and always did — so the extraction that let the two pages share
+one array was not wasted, only the landing page's use of it.
+
+---
+
+# The sheen, removed
+
+The pointer-tracked specular highlight (`useSheen`, `.sheen`, the four glazed
+surfaces it sat on — the scan form, the three how-it-works cards, the finding
+anatomy panel, the closing CTA) is gone. It read as a hover glow rather than
+as glass catching light, which was the opposite of the effect it was built
+for. `useSheen` is deleted from `motion.tsx` rather than left unused, the
+`.sheen` rules and the `--sheen` / `--sheen-alpha` tokens are gone from
+`globals.css` in all three theme blocks, and every panel that carried the
+class now reads `glass` alone — the blur, the lit edge and the cast shadow
+are what the material actually was; the pointer-follow was the one part of it
+that had turned into decoration. `tests/home-page.test.ts`'s reduced-motion
+guard count drops from two handlers to the one (`useParallax`) still writing
+an inline style outside the `[data-reveal]` mechanism.
+
+---
+
+# Network exposure gets its own section
+
+The port findings from Shodan InternetDB were readable but not *findable* —
+one combined finding ("Shodan records administrative ports as open on this
+address: 22, 3389") sitting in the risk register next to twenty-two others,
+and a matrix row that, after the earlier expansion fix, surfaced that same
+sentence inline. Both were technically present; neither read as its own
+place to look, the way Subdomains, Technology and Inventory do. `Network
+Exposure` (`NetworkExposure.tsx`) is now a section of its own, in the rail
+between Technology and Inventory — mirroring `internetdb`'s own position at
+the tail of `CATEGORY_ORDER` — with each notable port as its own row rather
+than folded into one sentence.
+
+**Why the port tables moved to their own file.** `internetdb.ts` (the check
+module) imports `dnsQuery` and `safeFetch` from `./util`, which reach for
+Node's `dns` module and server-only network primitives. `NetworkExposure.tsx`
+is a `'use client'` component — importing `classifyPort` or `serviceFor`
+directly from `internetdb.ts` would have pulled the whole module, Node
+built-ins included, into the browser bundle. `CRITICAL_PORTS` /
+`REMOTE_PORTS` / `ADMIN_WEB_PORTS` / `EXPECTED_PORTS` / `classifyPort` /
+`serviceFor` moved to `src/lib/checks/ports.ts`, which has no I/O and no
+server-only dependency; `internetdb.ts` now imports them from there and
+re-exports them for anything still reaching for them through the module
+(its own test file does). One table, read by both sides, instead of the
+dashboard keeping a second copy to drift from the module's.
+
+The section reads `category.facts` — typed now as `InternetDbFacts`, exported
+from `internetdb.ts` as a type. A type-only import is erased before anything
+ships to the browser, so naming the shape where it is produced costs the
+client bundle nothing, and `NetworkExposure.tsx` and the module cannot
+silently disagree about what `facts` contains the way an inline `Record<string,
+unknown>` cast on both ends could.
+
+It renders only when `internetdb`'s status is `'assessed'`. The unavailable
+cases — no A record, a reserved address, no Shodan record, a transport error
+— are left to the check matrix's own row, which already states which one
+applies; duplicating that here would be a second place for the explanation
+to go stale against the first.
