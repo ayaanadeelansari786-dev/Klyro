@@ -1,7 +1,8 @@
 import Link from 'next/link';
 
-import AccountMenuSlot from '@/components/AccountMenuSlot';
+import AccountMenu from '@/components/AccountMenu';
 import { Emblem } from '@/components/Emblem';
+import MainNav from '@/components/MainNav';
 import ThemeToggle from '@/components/ThemeToggle';
 
 /**
@@ -36,15 +37,27 @@ export function Wordmark({ href = '/' }: { href?: string | null }) {
 /**
  * The header row every page shares.
  *
- * It exists so the theme control has exactly one home. Before this, each page
- * hand-rolled `<header className="flex items-center justify-between">` around
- * a `<Wordmark />`, and a toggle would have had to be pasted into each of
- * them — which is how one page ends up without it.
+ * It carries the navigation now, rather than leaving each page to compose its
+ * own from whatever links seemed relevant there. That change is the point of
+ * the current shape: the same bar, in the same order, with the current page
+ * marked, on every route — see `navItems.ts` for what the four different
+ * hand-rolled bars looked like before, and why one of them naming the same
+ * destination differently was the actual usability problem.
+ *
+ * `children` still exists, for the rare page that needs a word of context
+ * beside the controls, but it is no longer where navigation goes.
+ *
+ * Structurally: wordmark and navigation left, account and theme right. The
+ * left group is "where you can go" and the right is "who you are and how this
+ * looks", which is the split every reader already expects and the previous
+ * arrangement — everything crowded to the right of the wordmark — did not
+ * make.
  */
 export function SiteHeader({
   children,
   href = '/',
   account = true,
+  nav = true,
 }: {
   children?: React.ReactNode;
   href?: string | null;
@@ -54,13 +67,18 @@ export function SiteHeader({
    * points at the page it is already on.
    */
   account?: boolean;
+  /** Set false where the page supplies its own in-context navigation. */
+  nav?: boolean;
 }) {
   return (
     <header className="flex items-center justify-between gap-4">
-      <Wordmark href={href} />
-      <div className="flex items-center gap-4 sm:gap-5">
+      <div className="flex min-w-0 items-center gap-6 lg:gap-8">
+        <Wordmark href={href} />
+        {nav && <MainNav />}
+      </div>
+      <div className="flex shrink-0 items-center gap-3 sm:gap-4">
         {children}
-        {account && <AccountMenuSlot />}
+        {account && <AccountMenu />}
         <ThemeToggle />
       </div>
     </header>

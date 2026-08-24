@@ -58,16 +58,7 @@ export default async function AppPage() {
 
   return (
     <main className="mx-auto w-full max-w-[1180px] px-5 py-6 sm:px-8 sm:py-8">
-      <SiteHeader>
-        <nav className="flex items-center gap-6">
-          <Link href="/" className="text-[12.5px] text-tx-2 transition-colors hover:text-tx">
-            New assessment
-          </Link>
-          <Link href="/org" className="text-[12.5px] text-tx-2 transition-colors hover:text-tx">
-            Organisations
-          </Link>
-        </nav>
-      </SiteHeader>
+      <SiteHeader />
 
       <div className="py-12 lg:py-16">
         <p className="micro">Saved assessments</p>

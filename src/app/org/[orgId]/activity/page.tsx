@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 
 import { PageFooter, SiteHeader } from '@/components/Chrome';
 import JoinCodePanel from '@/components/JoinCodePanel';
+import OrgTabs from '@/components/OrgTabs';
 import { roleAtLeast, type OrgRole } from '@/lib/auth/context';
 import { COLORS } from '@/lib/constants';
 import { riskColorFor } from '@/lib/scoring';
@@ -30,12 +31,14 @@ interface AssessmentRow {
 /**
  * Who is in this organisation, and what they have run.
  *
- * A separate page from `/org/[orgId]` on purpose: that page is membership and
- * role administration, and this one is a record of activity. The join code
- * appears on both — an owner checking who has been active is exactly the
- * moment they are also likely to want it, and `JoinCodePanel` already carries
- * its own permission gate, so showing it here costs nothing extra to get
- * right.
+ * A sibling tab of `/org/[orgId]`, not a separate destination: that tab is
+ * membership and role administration, this one is a record of activity, and
+ * `OrgTabs` states that relationship in the interface rather than leaving it
+ * to a pair of cross-links that named each other differently depending on
+ * which way you were travelling. The join code appears on both — an owner
+ * checking who has been active is exactly the moment they are also likely to
+ * want it, and `JoinCodePanel` already carries its own permission gate, so
+ * showing it here costs nothing extra to get right.
  *
  * Open to every member, not gated to admins. `assessments` already grants any
  * member read access to every assessment their organisation owns — `/app`
@@ -82,11 +85,34 @@ export default async function OrgActivityPage({ params }: { params: { orgId: str
   if (!org) notFound();
   const organisation = org as unknown as { id: string; name: string };
 
-  const { data: memberRows } = await supabase
-    .from('organisation_members')
-    .select('user_id, role, profiles(display_name)')
-    .eq('org_id', params.orgId)
-    .order('joined_at', { ascending: true });
+  /*
+   * All three at once. They used to run in sequence with the join-code fetch
+   * gated on a role derived from the first of them, which stacked four round
+   * trips before the page could render. Nothing depends on anything else, and
+   * the gate was never the boundary — `organisation_join_codes` has its own
+   * admin-only policy and column grants, so a viewer gets zero rows from the
+   * database rather than zero rows from an `if`.
+   */
+  const [{ data: memberRows }, { data: codeRows }, { data: assessmentRows }] = await Promise.all([
+    supabase
+      .from('organisation_members')
+      .select('user_id, role, profiles(display_name)')
+      .eq('org_id', params.orgId)
+      .order('joined_at', { ascending: true }),
+    supabase
+      .from('organisation_join_codes')
+      .select('code_hint, expires_at, revoked_at, max_uses, use_count')
+      .eq('org_id', params.orgId)
+      .is('revoked_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1),
+    supabase
+      .from('assessments')
+      .select('id, domain, industry, region, composite_score, risk_level, scanned_at, created_by')
+      .eq('owner_org_id', params.orgId)
+      .order('scanned_at', { ascending: false })
+      .limit(200),
+  ]);
 
   const members = (memberRows ?? []).map((row) => {
     const record = row as unknown as {
@@ -107,23 +133,6 @@ export default async function OrgActivityPage({ params }: { params: { orgId: str
   const myRole = members.find((member) => member.isYou)?.role ?? null;
   const canManage = roleAtLeast(myRole, 'admin');
 
-  // Same query the settings page runs, duplicated rather than shared: this
-  // page's own doc comment already explains why `assessments` cannot be
-  // trusted to auto-join `profiles`, and the same reasoning does not apply
-  // here — `organisation_join_codes` has exactly one column that could embed
-  // anything, `org_id`, and that points at `organisations`, not at a table
-  // this panel reads. There is nothing to factor out; the risk that made
-  // `nameByUserId` worth building does not exist for this query.
-  const { data: codeRows } = canManage
-    ? await supabase
-        .from('organisation_join_codes')
-        .select('code_hint, expires_at, revoked_at, max_uses, use_count')
-        .eq('org_id', params.orgId)
-        .is('revoked_at', null)
-        .order('created_at', { ascending: false })
-        .limit(1)
-    : { data: null };
-
   const liveCode = (codeRows ?? [])[0] as
     | { code_hint: string; expires_at: string | null; max_uses: number | null; use_count: number }
     | undefined;
@@ -135,13 +144,6 @@ export default async function OrgActivityPage({ params }: { params: { orgId: str
       ? liveCode.code_hint
       : null;
 
-  const { data: assessmentRows } = await supabase
-    .from('assessments')
-    .select('id, domain, industry, region, composite_score, risk_level, scanned_at, created_by')
-    .eq('owner_org_id', params.orgId)
-    .order('scanned_at', { ascending: false })
-    .limit(200);
-
   const assessments = (assessmentRows ?? []) as AssessmentRow[];
 
   const scanCounts = new Map<string, number>();
@@ -152,22 +154,15 @@ export default async function OrgActivityPage({ params }: { params: { orgId: str
 
   return (
     <main className="mx-auto w-full max-w-[1180px] px-5 py-6 sm:px-8 sm:py-8">
-      <SiteHeader>
-        <nav className="flex items-center gap-6">
-          <Link
-            href={`/org/${organisation.id}`}
-            className="text-[12.5px] text-tx-2 transition-colors hover:text-tx"
-          >
-            Organisation settings
-          </Link>
-          <Link href="/app" className="text-[12.5px] text-tx-2 transition-colors hover:text-tx">
-            Your assessments
-          </Link>
-        </nav>
-      </SiteHeader>
+      <SiteHeader />
 
-      <div className="py-12 lg:py-16">
-        <p className="micro">Activity</p>
+      <div className="pt-10 lg:pt-14">
+        <Link
+          href="/org"
+          className="micro inline-flex items-center gap-1.5 transition-colors hover:text-tx-2"
+        >
+          <span aria-hidden="true">&larr;</span> Organisations
+        </Link>
         <h1 className="wide mt-4 text-[34px] font-semibold leading-none tracking-[-0.03em] text-tx sm:text-[44px]">
           {organisation.name}
         </h1>
@@ -177,7 +172,9 @@ export default async function OrgActivityPage({ params }: { params: { orgId: str
         </p>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
+      <OrgTabs orgId={organisation.id} />
+
+      <div className="mt-6 grid gap-5 lg:grid-cols-[1.1fr_1fr]">
         {/* Roster, with each member's share of the organisation's scanning. */}
         <section className="panel overflow-hidden">
           <p className="micro px-6 py-4">Members</p>

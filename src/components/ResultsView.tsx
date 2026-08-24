@@ -12,6 +12,7 @@ import FindingsTable from '@/components/FindingsTable';
 import InventoryPanel from '@/components/InventoryPanel';
 import NetworkExposure from '@/components/NetworkExposure';
 import NewsIntel from '@/components/NewsIntel';
+import AccountMenu from '@/components/AccountMenu';
 import OrgPortfolio from '@/components/OrgPortfolio';
 import OwnershipPanel, { type OwnershipContext } from '@/components/OwnershipPanel';
 import RadarChart from '@/components/RadarChart';
@@ -931,8 +932,16 @@ function Shell({
           {/* `shrink-0`: without it a long domain in the left group compresses
               the controls instead of being truncated itself, which is the other
               half of how this cluster went missing. */}
+          {/* The account control belongs here too. This header is the report
+              view's own — compact, with a section rail under it and no room
+              for a nav bar — and without this a reader who opened a result
+              had no route back into the product but the wordmark, and no way
+              to tell which account the report had been saved under. The menu
+              carries the primary navigation, which is what makes one control
+              enough. */}
           <div className="flex shrink-0 items-center gap-3 sm:gap-4">
             {actions}
+            <AccountMenu />
             <ThemeToggle />
           </div>
         </div>

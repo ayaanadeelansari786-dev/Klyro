@@ -5,6 +5,77 @@ All notable changes to Klyro are recorded here.
 `TOOL_VERSION` in `src/lib/constants.ts` is written onto every stored
 assessment, so a report can always be traced to the version that produced it.
 
+## [1.13.0] — 2026-08-24
+
+### Fixed
+
+- **The account control no longer re-asks who is signed in on every
+  navigation.** The header was rendered by each page rather than by a layout,
+  so every click unmounted it and mounted a new one, which called
+  `auth.getUser()` again and re-fetched the reader's organisations again. The
+  name in the corner emptied and refilled on each page change, and the scan
+  form's organisation dropdown repopulated with it. Nothing was slow in the
+  sense of taking a long time — the same fast request was simply being made
+  over and over, and each one was visible.
+- The session now resolves once, in a `SessionProvider` mounted in the root
+  layout, which survives client-side navigation. Verified in the browser:
+  five consecutive in-app navigations with no page reload, and the account
+  control painting its settled state rather than its pending one on arrival.
+- `useMemberships` is now a two-line read from that provider instead of a
+  second Supabase client with its own auth subscription.
+- The auth client is still dynamically imported inside the provider's effect,
+  so it stays out of every first-load bundle — the landing page remains
+  statically prerendered at 114 kB, and `/methodology` and `/scanner` at
+  99.9 kB rather than the ~170 kB a static import would have cost them.
+- `/app` and `/org` now render a skeleton the instant a navigation starts.
+  Both are `force-dynamic` and read two or three tables first, so a click
+  used to do nothing visible at all until the whole response landed.
+- The organisation pages ran their queries in sequence, with the join-code
+  fetch gated on a role derived from the query before it — four round trips
+  stacked end to end. They now run concurrently. The gate was never the
+  boundary: `organisation_join_codes` has an admin-only policy and column
+  grants that keep the hash from every client role, so a viewer gets zero
+  rows from the database rather than zero rows from an `if`.
+
+### Changed
+
+- **One navigation bar, on every page, with the current page marked.** Four
+  pages had each grown their own, with different subsets of links and the
+  same destination named three different ways — "Your assessments",
+  "Assessments", and nothing at all — depending on where you were standing.
+  None of them showed where you were. There was no stable place to look, so
+  every navigation started by reading the header to find out what it
+  contained this time.
+- The two organisation views are now tabs rather than a pair of asymmetric
+  cross-links that renamed each other depending on the direction of travel.
+  `/org/[id]` and `/org/[id]/activity` are the same organisation seen two
+  ways, and the interface now says so. A breadcrumb back to `/org` replaces
+  "All organisations" sitting among unrelated links.
+- The report and rankings views carry their own compact header and offered
+  the wordmark and nothing else — a reader who opened a result had no route
+  back into the product and no way to tell which account it had been saved
+  under. Both now carry the account control, and the account menu carries the
+  primary navigation, which is what makes one control enough.
+- The benchmark dataset is in the navigation. It was linked from a one-item
+  `<nav>` on the landing page and from nowhere else, so it existed only for a
+  reader standing on the home page and looking to the right of the wordmark.
+- The header splits left and right — wordmark and navigation against account
+  and theme — rather than crowding everything to the right of the wordmark.
+- Below `lg` the navigation moves into the account menu rather than
+  overflowing. Verified at 375, 768, 1024, and 1280: no horizontal overflow
+  at any of them, and the four-item signed-in bar measures 373 px against
+  949 px of available header at 1024.
+
+### Added
+
+- `tests/navigation.test.ts` pins the rules above, because every one of them
+  broke silently: no page may compose its own `<nav>`, the header bar and the
+  account menu must read the same list, the provider must live in the root
+  layout, and no other component may hold an auth subscription. Two of these
+  caught real defects on their first run — a surviving one-item bar on the
+  landing page, and the fact that the benchmark dataset was unreachable from
+  anywhere else.
+
 ## [1.12.0] — 2026-08-24
 
 ### Added

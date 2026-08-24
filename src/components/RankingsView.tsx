@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 
+import AccountMenu from '@/components/AccountMenu';
 import { PageFooter, Wordmark } from '@/components/Chrome';
 import ThemeToggle from '@/components/ThemeToggle';
 import { COLORS, INDUSTRIES } from '@/lib/constants';
@@ -188,11 +189,15 @@ export default function RankingsView() {
             <span className="hidden h-3 w-px bg-line-strong sm:block" aria-hidden="true" />
             <span className="micro hidden sm:block">Benchmark dataset</span>
           </div>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
+          {/* Same reasoning as the report header: this view carries its own
+              compact header, so the account control is the one route back
+              into the rest of the product from here. */}
+          <div className="flex shrink-0 items-center gap-3 sm:gap-4">
             <Link href="/" className="btn-ghost px-3 py-2 text-[12.5px]">
               New assessment
             </Link>
+            <AccountMenu />
+            <ThemeToggle />
           </div>
         </div>
       </header>

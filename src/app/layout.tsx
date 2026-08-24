@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Archivo, Bodoni_Moda, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
+import SessionProvider from '@/components/SessionProvider';
 import { themeBootScript } from '@/components/ThemeToggle';
 
 // Archivo is loaded as a variable font with its width axis exposed, so large
@@ -86,7 +87,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Before first paint — see the note on `themeBootScript`. */}
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {/*
+         * The session lives here rather than in each page's header, and that
+         * placement is the whole point of it. A layout is not re-rendered
+         * when the page beneath it changes, so the account resolves once per
+         * page load instead of once per navigation — which is what stopped
+         * the name in the corner emptying and refilling on every click.
+         *
+         * `children` is passed through as a prop, so the pages under it stay
+         * server components and the landing page keeps its static render.
+         */}
+        <SessionProvider>{children}</SessionProvider>
+      </body>
     </html>
   );
 }

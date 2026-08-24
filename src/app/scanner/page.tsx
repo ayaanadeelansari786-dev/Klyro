@@ -64,17 +64,7 @@ function Recipe({ label, code }: { label: string; code: string }) {
 export default function ScannerPage() {
   return (
     <main className="mx-auto w-full max-w-[1180px] px-5 py-6 sm:px-8 sm:py-8">
-      <SiteHeader>
-        <nav className="flex items-center gap-6">
-          <Link
-            href="/"
-            className="text-[12.5px] text-tx-2 transition-colors duration-150 hover:text-tx"
-          >
-            Klyro
-          </Link>
-          <span className="micro hidden sm:inline">Scanner disclosure</span>
-        </nav>
-      </SiteHeader>
+      <SiteHeader />
 
       <div className="max-w-[64ch] py-14 lg:py-20">
         <p className="micro">KlyroExposureScanner {TOOL_VERSION}</p>

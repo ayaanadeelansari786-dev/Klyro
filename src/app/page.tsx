@@ -38,15 +38,12 @@ export default function HomePage() {
              * renders them only when nobody is signed in — a header that
              * offered "Create account" to somebody already holding one was
              * the thing worth fixing.
+             *
+             * Nor is the link to the benchmark dataset. It used to be a
+             * one-item `<nav>` here, which meant the dataset was reachable
+             * from this page and from nowhere else; it is in the shared
+             * navigation now, on every page.
              */}
-            <nav className="flex items-center gap-4 sm:gap-6">
-              <Link
-                href="/rankings"
-                className="hidden text-[12.5px] text-tx-2 transition-colors duration-150 hover:text-tx sm:inline"
-              >
-                Benchmark dataset
-              </Link>
-            </nav>
           </SiteHeader>
         </StickyBar>
 

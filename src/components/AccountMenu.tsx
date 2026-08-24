@@ -1,91 +1,60 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
 
-import { getBrowserClient } from '@/lib/supabase/browser';
+import { NAV_ITEMS } from '@/components/navItems';
+import { useSession } from '@/components/SessionProvider';
 
 /**
  * Who is signed in, and the way out.
  *
- * Resolved in the browser rather than on the server, which is a deliberate
- * trade. The landing page is the one statically prerendered route in the app
- * and it is the page most people arrive on; reading the session server-side
- * would make it render per request and give up its CDN cache to decide
- * whether to draw a name in the corner. So this asks the browser instead, and
- * the page stays static.
+ * Session state is read from `SessionProvider` in the root layout rather than
+ * fetched here. That is not a tidiness change: this component used to call
+ * `supabase.auth.getUser()` in its own effect, and because the header is
+ * rendered per page rather than by a layout, every navigation mounted a fresh
+ * copy and made the call again. The reader watched their own name disappear
+ * and come back on every click. Reading from context, the answer is already
+ * settled by the time this mounts, and the first paint is the right one.
  *
- * The cost is a moment before the answer arrives. It is covered by rendering
- * the signed-out control itself, made invisible, rather than a guessed-width
- * box: a visitor who turns out to be signed out — the common case on a
- * landing page — sees the header settle with no movement at all, at every
- * breakpoint, because the space held was the real markup. A visitor who turns
- * out to be signed in sees one small collapse as the two links give way to a
- * shorter name. That shift is not avoidable without rendering the page on the
- * server, which is the trade this whole approach declines.
+ * The session is still resolved in the browser rather than on the server, and
+ * that part is a deliberate trade. The landing page is the one statically
+ * prerendered route in the app and the page most people arrive on; reading
+ * the session server-side would make it render per request and give up its
+ * CDN cache to decide whether to draw a name in the corner.
  *
- * `onAuthStateChange` is subscribed to rather than the session being read
- * once. Signing out in another tab, or a token expiring mid-session, both
- * leave a header claiming somebody is signed in who is not — and the one
- * place that must never be wrong is the control that says whose data you are
- * looking at.
+ * The cost is one moment on first load, before the provider has answered. It
+ * is covered by rendering the signed-out control itself, made invisible,
+ * rather than a guessed-width box: a visitor who turns out to be signed out —
+ * the common case on a landing page — sees the header settle with no movement
+ * at all, at every breakpoint, because the space held was the real markup.
  */
-
-interface Account {
-  email: string;
-  displayName: string;
-}
-
-function accountFrom(user: { email?: string; user_metadata?: Record<string, unknown> } | null): Account | null {
-  if (!user?.email) return null;
-
-  const raw = user.user_metadata?.display_name;
-  const named = typeof raw === 'string' ? raw.trim() : '';
-
-  return {
-    email: user.email,
-    // The local part is a poor name and a good fallback: it is what the person
-    // typed, and it beats rendering an empty button.
-    displayName: named || user.email.split('@')[0],
-  };
-}
 
 export default function AccountMenu() {
   const router = useRouter();
-  const supabase = getBrowserClient();
+  const pathname = usePathname();
+  const { account, signOut } = useSession();
 
-  /* `undefined` is "not asked yet" and renders the placeholder; `null` is a
-     settled answer of nobody. Collapsing the two would flash the signed-out
-     links at every signed-in visitor on every page load. */
-  const [account, setAccount] = useState<Account | null | undefined>(
-    supabase ? undefined : null,
-  );
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const itemsRef = useRef<(HTMLAnchorElement | HTMLButtonElement | null)[]>([]);
+  const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
 
-  useEffect(() => {
-    if (!supabase) return;
-    let live = true;
-
-    supabase.auth.getUser().then(({ data }) => {
-      if (live) setAccount(accountFrom(data.user));
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (live) setAccount(accountFrom(session?.user ?? null));
-    });
-
-    return () => {
-      live = false;
-      sub.subscription.unsubscribe();
-    };
-  }, [supabase]);
+  /*
+   * Focusable items are read from the DOM rather than collected into a ref
+   * array as they render, and filtered by `offsetParent` so anything
+   * `display: none` is skipped. Arrow keys should never walk onto an item
+   * nobody can see, and a ref array populated during render cannot know
+   * which items CSS has since hidden.
+   */
+  function menuItems(): HTMLElement[] {
+    const found = menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]');
+    return Array.from(found ?? []).filter((el) => el.offsetParent !== null);
+  }
 
   /* Escape closes and returns focus to the trigger; a click outside just
      closes. The same contract the report menu keeps. */
@@ -110,11 +79,23 @@ export default function AccountMenu() {
   }, [open]);
 
   useEffect(() => {
-    if (open) itemsRef.current[0]?.focus();
+    if (open) menuItems()[0]?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  /*
+   * Close on navigation. The menu now contains links, and without this a tap
+   * on one of them leaves it hanging open over the page it just opened.
+   * Keyed on the pathname rather than the router object, which is stable
+   * across navigations and would never fire this.
+   */
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
   function onMenuKeyDown(event: React.KeyboardEvent) {
-    const items = itemsRef.current.filter(Boolean) as HTMLElement[];
+    const items = menuItems();
+    if (items.length === 0) return;
     const at = items.indexOf(document.activeElement as HTMLElement);
     if (event.key === 'ArrowDown') {
       event.preventDefault();
@@ -125,11 +106,11 @@ export default function AccountMenu() {
     }
   }
 
-  async function signOut() {
-    if (!supabase) return;
+  async function runSignOut() {
+    if (!signOut) return;
     setSigningOut(true);
     try {
-      await supabase.auth.signOut();
+      await signOut();
       setOpen(false);
       /*
        * Both, and in this order. `refresh()` re-runs the server components
@@ -144,11 +125,6 @@ export default function AccountMenu() {
     }
   }
 
-  // Accounts are not configured for this deployment. Assessments still run, so
-  // the header simply says nothing about them rather than offering a door into
-  // a panel that would explain it cannot sign anyone in.
-  if (!supabase) return null;
-
   // Asked, not yet answered — and once answered, nobody. The same markup
   // serves both, so the settled signed-out header occupies exactly the space
   // the pending one reserved.
@@ -156,7 +132,7 @@ export default function AccountMenu() {
     const pending = account === undefined;
     return (
       <div
-        className={`flex items-center gap-4 sm:gap-5 ${pending ? 'invisible' : ''}`}
+        className={`flex items-center gap-3 sm:gap-4 ${pending ? 'invisible' : ''}`}
         aria-hidden={pending || undefined}
       >
         <Link
@@ -226,6 +202,7 @@ export default function AccountMenu() {
 
       {open && (
         <div
+          ref={menuRef}
           id={menuId}
           role="menu"
           onKeyDown={onMenuKeyDown}
@@ -239,38 +216,39 @@ export default function AccountMenu() {
             <p className="truncate font-mono text-[10.5px] text-tx-3">{account.email}</p>
           </div>
 
-          <Link
-            ref={(el) => {
-              itemsRef.current[0] = el;
-            }}
-            href="/app"
-            role="menuitem"
-            onClick={() => setOpen(false)}
-            className={item}
-          >
-            Your assessments
-          </Link>
-          <Link
-            ref={(el) => {
-              itemsRef.current[1] = el;
-            }}
-            href="/org"
-            role="menuitem"
-            onClick={() => setOpen(false)}
-            className={item}
-          >
-            Organisations
-          </Link>
-
-          <div className="my-1 border-t border-line" />
+          {/*
+           * The primary navigation, always. Below `md` this is the only copy
+           * — a phone header cannot hold three links, an account button, and
+           * a theme toggle without overflowing, and a second disclosure
+           * button beside this one would be two menus where one will do.
+           *
+           * Above `md` it duplicates the header bar, deliberately. The report
+           * and rankings views carry their own compact header with no room
+           * for a nav bar, and a reader who opened a result had no way back
+           * into the product except the wordmark. Repeating three links in a
+           * menu is a smaller cost than an account control that means
+           * something different depending on which page you opened it from.
+           */}
+          <div>
+            {NAV_ITEMS.map((entry) => (
+              <Link
+                key={entry.href}
+                href={entry.href}
+                role="menuitem"
+                aria-current={pathname === entry.href ? 'page' : undefined}
+                onClick={() => setOpen(false)}
+                className={`${item} aria-[current=page]:text-tx`}
+              >
+                {entry.label}
+              </Link>
+            ))}
+            <div className="my-1 border-t border-line" />
+          </div>
 
           <button
-            ref={(el) => {
-              itemsRef.current[2] = el;
-            }}
             type="button"
             role="menuitem"
-            onClick={signOut}
+            onClick={runSignOut}
             disabled={signingOut}
             className={item}
           >

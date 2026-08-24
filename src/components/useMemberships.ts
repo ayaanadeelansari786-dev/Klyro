@@ -1,117 +1,26 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-
-import { roleAtLeast, type OrgRole } from '@/lib/auth/context';
+import { useSession, type Membership } from '@/components/SessionProvider';
 
 /**
- * The organisations the signed-in reader belongs to, read in the browser.
+ * The organisations the signed-in reader belongs to.
  *
- * There is no ownership filter in the query and that is deliberate, for the
- * same reason `recentAssessments` has none: row level security on
- * `organisation_members` returns only the caller's own memberships, so a row
- * coming back is itself the proof of membership. Filtering here as well would
- * imply the application is what enforces it, and invite someone to relax the
- * policy later on the strength of a `.eq()` in a React hook.
+ * Now a two-line read from `SessionProvider` rather than its own fetch. It
+ * used to open a Supabase client and query `organisation_members` in its own
+ * effect, which was fine when one component used it and wrong the moment the
+ * account menu was doing the same work a few pixels away: two clients, two
+ * auth subscriptions, and the membership list re-fetched on every navigation
+ * because `ScanForm` remounts with the page. The scan form's organisation
+ * dropdown visibly repopulated each time.
  *
- * Nothing security-critical rests on this either way. It decides which
- * options a dropdown offers; `resolveOwner` re-checks the membership
- * server-side before any scan is filed anywhere, and a forged id in the URL
- * gets the scan saved personally with a notice rather than accepted.
- *
- * The Supabase client is imported inside the effect rather than at the top of
- * the module, and that is a bundle decision rather than a stylistic one. This
- * hook is used by `ScanForm`, which the landing page renders; a static import
- * put the auth client into the first-load bundle of the one page the whole
- * product is entered through. Signed-out visitors — most of them, on that
- * page — never need it at all, and the ones who do are not waiting on a
- * dropdown before they can type a domain.
+ * Kept as a named hook rather than having callers reach for `useSession`
+ * directly. `ScanForm` wants "which organisations can I file under", not
+ * "what is the session"; the narrower name is the one worth importing, and it
+ * leaves room to add the filtering that question may eventually need.
  */
-
-export interface Membership {
-  id: string;
-  name: string;
-  role: OrgRole;
-  /** True when this member may add assessments, not merely read them. */
-  canFile: boolean;
-}
-
-interface MemberRow {
-  role: OrgRole;
-  organisations: { id: string; name: string } | { id: string; name: string }[] | null;
-}
+export type { Membership };
 
 export function useMemberships(): { memberships: Membership[]; loading: boolean } {
-  const [memberships, setMemberships] = useState<Membership[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let live = true;
-    let unsubscribe: (() => void) | undefined;
-
-    (async () => {
-      const { getBrowserClient } = await import('@/lib/supabase/browser');
-      const supabase = getBrowserClient();
-
-      if (!live) return;
-      if (!supabase) {
-        setLoading(false);
-        return;
-      }
-
-      const load = async () => {
-        const { data } = await supabase
-          .from('organisation_members')
-          .select('role, organisations(id, name)');
-
-        if (!live) return;
-
-        const rows = (data ?? []) as unknown as MemberRow[];
-        setMemberships(
-          rows
-            .map((row) => {
-              // PostgREST returns an embedded one-to-one as an object, but
-              // types it as an array often enough that both shapes have to be
-              // handled rather than trusted.
-              const org = Array.isArray(row.organisations)
-                ? row.organisations[0]
-                : row.organisations;
-              if (!org?.id) return null;
-              return {
-                id: org.id,
-                name: org.name,
-                role: row.role,
-                canFile: roleAtLeast(row.role, 'analyst'),
-              };
-            })
-            .filter((m): m is Membership => m !== null)
-            .sort((a, b) => a.name.localeCompare(b.name)),
-        );
-        setLoading(false);
-      };
-
-      await load();
-
-      // Signing in or out changes the answer completely, and a stale org list
-      // is a dropdown offering to file a stranger's scan under your
-      // organisation.
-      const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (!live) return;
-        if (!session) {
-          setMemberships([]);
-          setLoading(false);
-          return;
-        }
-        void load();
-      });
-      unsubscribe = () => sub.subscription.unsubscribe();
-    })();
-
-    return () => {
-      live = false;
-      unsubscribe?.();
-    };
-  }, []);
-
-  return { memberships, loading };
+  const { memberships, membershipsLoading } = useSession();
+  return { memberships, loading: membershipsLoading };
 }

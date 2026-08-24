@@ -24,16 +24,7 @@ export default async function OrgIndexPage() {
 
   return (
     <main className="mx-auto w-full max-w-[1180px] px-5 py-6 sm:px-8 sm:py-8">
-      <SiteHeader>
-        <nav className="flex items-center gap-6">
-          <Link href="/app" className="text-[12.5px] text-tx-2 transition-colors hover:text-tx">
-            Your assessments
-          </Link>
-          <Link href="/" className="text-[12.5px] text-tx-2 transition-colors hover:text-tx">
-            New assessment
-          </Link>
-        </nav>
-      </SiteHeader>
+      <SiteHeader />
 
       <div className="py-12 lg:py-16">
         <p className="micro">Organisations</p>

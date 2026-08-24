@@ -172,17 +172,7 @@ const SOURCES: Record<
 export default function MethodologyPage() {
   return (
     <main className="mx-auto w-full max-w-[1180px] px-5 py-6 sm:px-8 sm:py-8">
-      <SiteHeader>
-        <nav className="flex items-center gap-6">
-          <Link
-            href="/scanner"
-            className="text-[12.5px] text-tx-2 transition-colors duration-150 hover:text-tx"
-          >
-            Scanner disclosure
-          </Link>
-          <span className="micro hidden sm:inline">Methodology</span>
-        </nav>
-      </SiteHeader>
+      <SiteHeader />
 
       <div className="max-w-[64ch] py-14 lg:py-20">
         <p className="micro">Klyro {TOOL_VERSION}</p>
