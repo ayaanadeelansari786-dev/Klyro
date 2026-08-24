@@ -170,3 +170,55 @@ describe('a reader is never stranded', () => {
     }
   });
 });
+
+/**
+ * Roles, and the two ways the database says no.
+ *
+ * The roles existed in the schema from the start with no way to assign one,
+ * so everybody who joined by code arrived a viewer and stayed one — which
+ * silently disabled saving a scan to the organisation, because the scan
+ * form only offers organisations the reader may write to. Two separate
+ * gaps, one cause.
+ */
+describe('member roles', () => {
+  const route = read('src', 'app', 'api', 'org', '[orgId]', 'members', 'route.ts');
+  const roster = read('src', 'components', 'MemberRoster.tsx');
+  const form = read('src', 'components', 'ScanForm.tsx');
+
+  it('leaves who-may-change-whom to the policy', () => {
+    // `app.has_org_role(org_id, 'admin') and (role <> 'owner' or
+    // app.has_org_role(org_id, 'owner'))`, in both USING and WITH CHECK. A
+    // TypeScript copy of that is free to drift from it.
+    expect(code(route)).not.toMatch(/roleAtLeast|roleInOrg/);
+  });
+
+  it('handles both shapes of refusal', () => {
+    // Verified against the live database: an admin demoting an owner is
+    // filtered by USING and returns zero rows, while an admin promoting
+    // anyone to owner passes USING and is *raised* by WITH CHECK as 42501.
+    // Handling only the first reports the second as an unexplained failure.
+    expect(route).toContain('42501');
+    expect(route).toMatch(/data\.length === 0/);
+  });
+
+  it('passes the last-owner trigger message through rather than replacing it', () => {
+    // `app.assert_owner_remains` raises 23514 with prose that names the fix.
+    expect(route).toContain('23514');
+    expect(route).toMatch(/error\.message/);
+  });
+
+  it('tells a viewer why they cannot save to their organisation', () => {
+    // The control being absent read as the feature being broken. It is a
+    // permission, and saying so is the whole fix.
+    expect(form).toMatch(/readOnlyOrgs/);
+    expect(form).toMatch(/starts\s*\n?\s*at analyst|saving to an organisation starts/);
+  });
+
+  it('says which rank saving starts at, not just the role names', () => {
+    // "Analyst" does not tell anyone it is the rank at which saving to the
+    // organisation begins working, and that is the fact a person choosing a
+    // role most needs.
+    expect(roster).toMatch(/Analysts/);
+    expect(roster).toMatch(/save an assessment to it/);
+  });
+});

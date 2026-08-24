@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -26,6 +27,13 @@ export default function ScanForm() {
    */
   const { memberships } = useMemberships();
   const filable = memberships.filter((m) => m.canFile);
+  /*
+   * A member of something, but not at a rank that may write to any of it.
+   * Worth its own state rather than folding into "no organisations": the
+   * control being absent means two completely different things to these two
+   * readers, and only one of them has something to do about it.
+   */
+  const readOnlyOrgs = filable.length === 0 ? memberships : [];
   const [orgId, setOrgId] = useState<string | null>(null);
   const [orgTouched, setOrgTouched] = useState(false);
 
@@ -292,7 +300,38 @@ export default function ScanForm() {
         * visitor and for a member of nothing — a control with one option is
         * not a choice, it is a row of chrome explaining a feature you do not
         * have.
+        *
+        * A viewer is the third case and used to be folded into the second,
+        * which was the wrong call. They belong to an organisation, they can
+        * see its assessments, and they have every reason to expect they can
+        * add one — so a control that is simply missing reads as the feature
+        * being broken rather than as a permission they do not hold. Their
+        * scans were quietly filed personally and nothing anywhere said why.
         */}
+      {readOnlyOrgs.length > 0 && (
+        <>
+          <div className="rule" />
+          <div className="px-6 py-6 sm:px-8">
+            <span className="micro block">Save this assessment to</span>
+            <p className="mt-2.5 max-w-lg text-[12.5px] leading-relaxed text-tx-2">
+              This will be saved to your own history. You are a viewer in{' '}
+              {readOnlyOrgs.map((org) => org.name).join(', ')}, and saving to an organisation starts
+              at analyst.
+            </p>
+            <p className="mt-2 max-w-lg text-[11.5px] leading-relaxed text-tx-3">
+              An administrator or owner can change your role from the{' '}
+              <Link
+                href="/org"
+                className="underline decoration-line-strong underline-offset-2 hover:text-tx-2"
+              >
+                organisation page
+              </Link>
+              .
+            </p>
+          </div>
+        </>
+      )}
+
       {filable.length > 0 && (
         <>
           <div className="rule" />

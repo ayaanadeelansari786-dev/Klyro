@@ -5,6 +5,44 @@ All notable changes to Klyro are recorded here.
 `TOOL_VERSION` in `src/lib/constants.ts` is written onto every stored
 assessment, so a report can always be traced to the version that produced it.
 
+## [1.14.0] — 2026-08-24
+
+### Added
+
+- **Administrators and owners can change a member's role**, from the members
+  panel on the organisation page, and remove members. The roles have existed
+  in the schema since organisations were added and there was no way to assign
+  one — everybody who joined by code arrived a viewer and stayed a viewer.
+- Only an owner can make another owner; an admin may manage everyone except
+  owners. Both rules are the database's, not the route's, and both were
+  verified against the live policy before shipping — as was the last-owner
+  constraint trigger, whose own message is passed through rather than
+  replaced because it names the fix.
+
+### Fixed
+
+- **Saving an assessment to an organisation appeared to do nothing for a
+  viewer.** The scan form only offers organisations the reader may write to,
+  and for a viewer that is none — so the "Save this assessment to" control
+  was absent entirely and every scan was filed personally with no explanation
+  anywhere. Absent read as broken. The form now names the organisations the
+  reader belongs to, says saving starts at analyst, and points at the page
+  where a role can be changed.
+- The filing path itself was never at fault: `resolveOwner` files under an
+  organisation correctly for an analyst and above, and has tests covering
+  every rank. Confirmed against production data — every stored assessment was
+  personal because the account running them holds `viewer`.
+- The role route mishandled one of the two ways row-level security refuses. A
+  USING clause *filters*, so a forbidden row returns zero rows; a WITH CHECK
+  clause *raises*, as `42501`. On `organisation_members` both halves carry the
+  same test, so an admin demoting an owner returns zero rows while an admin
+  promoting anyone to owner raises — and the second was falling through to a
+  generic failure that explained nothing. Found by testing each rule against
+  the real policy rather than reading it.
+- The members panel now states which rank saving to the organisation starts
+  at. "Analyst" does not tell anyone that, and it is the single fact somebody
+  choosing a role most needs.
+
 ## [1.13.0] — 2026-08-24
 
 ### Fixed

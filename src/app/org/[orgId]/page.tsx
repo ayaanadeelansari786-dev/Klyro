@@ -6,6 +6,7 @@ import BenchmarkOptIn from '@/components/BenchmarkOptIn';
 import { PageFooter, SiteHeader } from '@/components/Chrome';
 import DeleteOrgPanel from '@/components/DeleteOrgPanel';
 import JoinCodePanel from '@/components/JoinCodePanel';
+import MemberRoster from '@/components/MemberRoster';
 import OrgTabs from '@/components/OrgTabs';
 import { roleAtLeast, type OrgRole } from '@/lib/auth/context';
 import { createClientForRequest, getCurrentUser } from '@/lib/supabase/server';
@@ -151,25 +152,7 @@ export default async function OrgPage({ params }: { params: { orgId: string } })
       <OrgTabs orgId={organisation.id} />
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.1fr_1fr]">
-        <section className="panel overflow-hidden">
-          <p className="micro px-6 py-4">Members</p>
-          <ul className="border-t border-line">
-            {members.map((member) => (
-              <li key={member.userId} className="ledger-row flex items-center gap-4 px-6 py-3.5">
-                <span className="flex-1 truncate text-[13.5px] text-tx">
-                  {member.name}
-                  {member.isYou && <span className="ml-2 text-[11.5px] text-tx-3">you</span>}
-                </span>
-                <span className="chip">{member.role}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="border-t border-line px-6 py-4 text-[11.5px] leading-relaxed text-tx-3">
-            Viewers read. Analysts also run assessments for the organisation. Administrators manage
-            members and the join code. Owners can additionally delete the organisation, and an
-            organisation always keeps at least one.
-          </p>
-        </section>
+        <MemberRoster orgId={organisation.id} members={members} myRole={myRole} />
 
         <div className="flex flex-col gap-5">
           <JoinCodePanel orgId={organisation.id} canManage={canManage} liveCodeHint={liveHint} />
