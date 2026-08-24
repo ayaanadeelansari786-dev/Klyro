@@ -5,6 +5,39 @@ All notable changes to Klyro are recorded here.
 `TOOL_VERSION` in `src/lib/constants.ts` is written onto every stored
 assessment, so a report can always be traced to the version that produced it.
 
+## [1.14.1] — 2026-08-24
+
+### Fixed
+
+- **An organisation appeared once per member of it.** org1, with two people
+  in it, was listed twice everywhere the reader's own organisations are shown
+  — the scan form, `/app`, `/org`, and the organisations API.
+- The cause was a misreading of the policy, repeated in four places. The
+  policy on `organisation_members` is `app.is_org_member(org_id)`: it scopes
+  rows to organisations you belong to, **not** to your membership of them. All
+  four queries omitted a `user_id` filter on the stated belief that the policy
+  already applied one, and the comments said so explicitly. It does not, so
+  each returned one row per member of every organisation the reader is in.
+- The duplication was the visible half. The other half was worse: each row
+  carries *that member's* role, so `canFile` could be computed from a
+  colleague's. **This is what actually broke saving to an organisation** — a
+  viewer sharing an organisation with an owner picked up `owner`, was offered
+  the "save to organisation" control, and had the scan filed personally when
+  the server correctly refused it. Yesterday's release attributed that to the
+  control not rendering for a viewer at all; that was wrong, and this is the
+  real mechanism.
+- The permission check was never at fault. `resolveOwner` applies its own
+  `user_id` test server-side and refused exactly as it should. The list it was
+  being applied to was the broken part.
+- Verified against the live database: the affected account's unfiltered query
+  returned 2 rows with roles {admin, owner}; filtered, 1 row and {admin}.
+- The filter is a correctness control, not a security one, and the comments
+  now say that rather than the reverse. Removing it leaks nothing — it is how
+  a row about you is told apart from a row about a colleague. The two
+  organisation-page queries that deliberately list every member are scoped by
+  `org_id` and are unchanged; a test now pins both shapes so neither is
+  "fixed" into the other.
+
 ## [1.14.0] — 2026-08-24
 
 ### Added

@@ -10,10 +10,10 @@ export const dynamic = 'force-dynamic';
 /**
  * The organisations the caller belongs to.
  *
- * Read through the caller's own client, so the policy decides. There is no
- * `where user_id = ...` here and there should not be one — see the note in
- * `recentAssessmentsFor` for why an application-level filter over a
- * policy-protected table is worse than none.
+ * Read through the caller's own client, so the policy decides which
+ * organisations are visible at all — and then filtered to the caller's own
+ * membership row, because the policy scopes by organisation rather than by
+ * member. See the note on the query.
  */
 export async function GET() {
   const user = await getCurrentUser();
@@ -22,9 +22,31 @@ export async function GET() {
   const supabase = createClientForRequest();
   if (!supabase) return NextResponse.json({ organisations: [] });
 
+  /*
+   * Filtered to the caller's own membership row, which is not the same thing
+   * as trusting the application to enforce the boundary.
+   *
+   * The policy on `organisation_members` is `app.is_org_member(org_id)`: it
+   * scopes rows to organisations you belong to, not to *your* membership of
+   * them. So an unfiltered read returns one row per member of every
+   * organisation you are in — org1 with two people came back twice, and the
+   * `role` attached to each row was whichever member it described rather than
+   * the reader.
+   *
+   * That produced a duplicated organisation list and, worse, a role read off
+   * somebody else's row: a viewer sitting in an organisation with an owner
+   * picked up `owner`, so the scan form offered to file under an organisation
+   * the database then refused to accept it for.
+   *
+   * The security boundary is still the policy — this filter narrows a set the
+   * policy has already restricted, and removing it would leak nothing. It is
+   * here for correctness: it is how a row about *me* is told apart from a row
+   * about a colleague.
+   */
   const { data, error } = await supabase
     .from('organisation_members')
     .select('role, organisations(id, name, slug)')
+    .eq('user_id', user.id)
     .order('joined_at', { ascending: true });
 
   if (error) return NextResponse.json({ organisations: [] });

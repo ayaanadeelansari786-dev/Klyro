@@ -222,3 +222,54 @@ describe('member roles', () => {
     expect(roster).toMatch(/save an assessment to it/);
   });
 });
+
+/**
+ * "Which organisations am I in", asked correctly.
+ *
+ * The policy on `organisation_members` is `app.is_org_member(org_id)`. It
+ * scopes rows to organisations you belong to, *not* to your membership of
+ * them — so an unfiltered read returns one row per member of every
+ * organisation you are in, each carrying that member's role. Four queries
+ * were written without a `user_id` filter on the stated belief that the
+ * policy already did this, and every one of them was wrong in the same way.
+ *
+ * Verified against the live database: the viewer account's unfiltered query
+ * returned 2 rows with roles {admin, owner}; filtered, 1 row and {admin}.
+ */
+describe('reading your own memberships', () => {
+  const sources: [string, string][] = [
+    ['SessionProvider', read('src', 'components', 'SessionProvider.tsx')],
+    ['api/org', read('src', 'app', 'api', 'org', 'route.ts')],
+    ['/app', read('src', 'app', 'app', 'page.tsx')],
+    ['/org', read('src', 'app', 'org', 'page.tsx')],
+  ];
+
+  it('filters every organisation list to the caller', () => {
+    // Duplicated entries were the visible symptom. The role being read off a
+    // colleague's row was the real defect: a viewer picked up `owner` and was
+    // offered a save target the server then refused.
+    for (const [name, source] of sources) {
+      const query = code(source).match(
+        /from\(['"]organisation_members['"]\)[\s\S]{0,400}?;/,
+      );
+      expect(query, `${name}: no membership query found`).not.toBeNull();
+      expect(query![0], name).toMatch(/\.eq\(\s*['"]user_id['"]/);
+    }
+  });
+
+  it('still lets the organisation page list everybody', () => {
+    // The same table, asked a different question. These are scoped by
+    // `org_id` and are meant to return every member — adding a `user_id`
+    // filter here would empty the roster.
+    for (const path of [
+      ['src', 'app', 'org', '[orgId]', 'page.tsx'],
+      ['src', 'app', 'org', '[orgId]', 'activity', 'page.tsx'],
+    ]) {
+      const query = code(read(...path)).match(
+        /from\(['"]organisation_members['"]\)[\s\S]{0,400}?,\n/,
+      );
+      expect(query![0]).toMatch(/\.eq\(\s*['"]org_id['"]/);
+      expect(query![0]).not.toMatch(/\.eq\(\s*['"]user_id['"]/);
+    }
+  });
+});

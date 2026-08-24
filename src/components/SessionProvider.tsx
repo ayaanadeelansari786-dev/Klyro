@@ -121,21 +121,34 @@ export default function SessionProvider({ children }: { children: React.ReactNod
       setClient(supabase);
 
       /*
-       * There is no ownership filter on this query and that is deliberate,
-       * for the same reason `recentAssessments` has none: row level security
-       * on `organisation_members` returns only the caller's own memberships,
-       * so a row coming back is itself the proof. Filtering here as well
-       * would imply the application is what enforces it, and invite someone
-       * to relax the policy later on the strength of an `.eq()` in React.
+       * Filtered to the caller's own membership row.
        *
-       * Nothing security-critical rests on it either way. It decides which
-       * options a dropdown offers; `resolveOwner` re-checks membership
-       * server-side before any scan is filed anywhere.
+       * This query used to have no filter, on the stated reasoning that row
+       * level security "returns only the caller's own memberships". That was
+       * simply wrong about the policy. `organisation_members` is protected by
+       * `app.is_org_member(org_id)`, which scopes rows to organisations you
+       * belong to — not to your membership of them. An unfiltered read
+       * therefore returns one row per member of every organisation you are
+       * in, and each row carries *that member's* role.
+       *
+       * Two things followed. An organisation with two people appeared twice
+       * in every list built from this. And `canFile` was computed from
+       * whichever row arrived, so a viewer in an organisation that has an
+       * owner picked up `owner` and was offered a "save to organisation"
+       * option the server then refused, filing the scan personally with a
+       * notice. The permission check was never wrong; the list it was applied
+       * to was.
+       *
+       * The boundary is still the policy. Nothing security-critical rests on
+       * this filter — `resolveOwner` re-checks membership server-side, with
+       * its own `user_id` test, before any scan is filed anywhere. The filter
+       * is what tells a row about me apart from a row about a colleague.
        */
-      const loadMemberships = async () => {
+      const loadMemberships = async (userId: string) => {
         const { data } = await supabase
           .from('organisation_members')
-          .select('role, organisations(id, name)');
+          .select('role, organisations(id, name)')
+          .eq('user_id', userId);
 
         if (!live) return;
 
@@ -169,7 +182,7 @@ export default function SessionProvider({ children }: { children: React.ReactNod
       const resolved = accountFrom(data.user);
       setAccount(resolved);
 
-      if (resolved) await loadMemberships();
+      if (resolved) await loadMemberships(resolved.id);
       else setMembershipsLoading(false);
 
       /*
@@ -185,7 +198,7 @@ export default function SessionProvider({ children }: { children: React.ReactNod
         const next = accountFrom(session?.user ?? null);
         setAccount(next);
         if (next) {
-          void loadMemberships();
+          void loadMemberships(next.id);
         } else {
           setMemberships([]);
           setMembershipsLoading(false);

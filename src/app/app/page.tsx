@@ -37,6 +37,10 @@ export default async function AppPage() {
           await supabase
             .from('organisation_members')
             .select('role, organisations(id, name, slug)')
+            // Own membership only — see the note in `SessionProvider`. The
+            // policy scopes by organisation, not by member, so without this
+            // an organisation appears once per colleague.
+            .eq('user_id', user.id)
         ).data ?? [])
       : [];
 
